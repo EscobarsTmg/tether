@@ -33,9 +33,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!supabase || !session) return
+    const client = supabase
     const handler = (event: MouseEvent) => {
       const target = event.target as HTMLElement
-      if (target.closest('.sidebar-foot button')) supabase.auth.signOut()
+      if (target.closest('.sidebar-foot button')) void client.auth.signOut()
     }
     document.addEventListener('click', handler)
     return () => document.removeEventListener('click', handler)
