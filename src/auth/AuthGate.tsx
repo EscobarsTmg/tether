@@ -31,6 +31,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
       .then(({ data }) => setProfile(data as Profile | null))
   }, [session])
 
+  useEffect(() => {
+    if (!supabase || !session) return
+    const handler = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest('.sidebar-foot button')) supabase.auth.signOut()
+    }
+    document.addEventListener('click', handler)
+    return () => document.removeEventListener('click', handler)
+  }, [session])
+
   async function signIn(e: FormEvent) {
     e.preventDefault()
     if (!supabase) return
