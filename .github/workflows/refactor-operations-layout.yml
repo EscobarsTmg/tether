@@ -28,9 +28,12 @@ jobs:
           p=Path('src/AppOpsV3.tsx')
           s=p.read_text()
           s=s.replace("import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'", "import { NavLink } from 'react-router-dom'")
-          start=s.index('const navGroups = [')
-          end=s.index('function SummaryStrip')
-          s=s[:start]+s[end:]
+          nav_start=s.index('const navGroups = [')
+          helpers_start=s.index('function cls(')
+          s=s[:nav_start]+s[helpers_start:]
+          shell_start=s.index('function Shell(')
+          summary_start=s.index('function SummaryStrip')
+          s=s[:shell_start]+s[summary_start:]
           marker='export default function AppOpsV3()'
           pos=s.index(marker)
           s=s[:pos]+'''export {\n  Dashboard, BankAccounts, Transactions, Movements, AccountHistory, Reports,\n  Reconciliation, ConnectionStatus, Metrics, BankConnections, UsersPage,\n  UserGroups, Audit, Callbacks, SettingsPage,\n}\n\nexport default Dashboard\n'''
