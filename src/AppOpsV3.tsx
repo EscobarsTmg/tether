@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react'
-import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import {
   Activity, BarChart3, Bell, Building2, ChevronDown, ChevronRight, CircleDollarSign,
   Clock3, DatabaseZap, FileClock, FileText, Gauge, History, LayoutDashboard, Link2,
@@ -11,36 +11,6 @@ import { supabase } from './lib/supabase'
 import { bankCatalog, bankByProvider } from './lib/bankCatalog'
 import { useOpsData, type BankAccount, type Tx } from './lib/opsData'
 
-const navGroups = [
-  {
-    label: 'OPERATIONS',
-    items: [
-      ['Dashboard', '/', LayoutDashboard],
-      ['Bank Accounts', '/bank-accounts', WalletCards],
-      ['Transactions', '/transactions', CircleDollarSign],
-      ['Account Movements', '/account-movements', Activity],
-      ['Account History', '/account-history', History],
-      ['Reports', '/reports', FileText],
-      ['Reconciliation', '/reconciliation', ListChecks],
-      ['Connection Status', '/connection-status', Gauge],
-      ['Metrics', '/metrics', BarChart3],
-    ],
-  },
-  {
-    label: 'ADMINISTRATION',
-    items: [
-      ['Bank Connections', '/bank-connections', Link2],
-      ['Users', '/users', Users],
-      ['User Groups', '/user-groups', UserRoundCog],
-      ['Audit Log', '/audit-log', ShieldCheck],
-      ['Callbacks', '/callbacks', Webhook],
-      ['Settings', '/settings', Settings],
-    ],
-  },
-] as const
-
-const allNav = navGroups.flatMap(g => g.items)
-
 function cls(...v:(string|false|null|undefined)[]){return v.filter(Boolean).join(' ')}
 function money(v:number,c='TRY'){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency:c,maximumFractionDigits:2}).format(Number(v||0))}catch{return `${Number(v||0).toFixed(2)} ${c}`}}
 function dt(v:string|null|undefined){return v?new Date(v).toLocaleString('tr-TR'):'—'}
@@ -51,25 +21,6 @@ function Empty({title,detail}:{title:string;detail:string}){return <div classNam
 function Stat({label,value,note,tone='default'}:{label:string;value:string;note:string;tone?:'default'|'good'|'bad'|'warn'}){return <div className={`ops-stat ${tone}`}><span>{label}</span><strong>{value}</strong><small>{note}</small></div>}
 
 function copyText(value:string){void navigator.clipboard?.writeText(value)}
-
-function Shell({children}:{children:React.ReactNode}){
-  const location=useLocation(); const[collapsed,setCollapsed]=useState(false); const[notices,setNotices]=useState(false)
-  const current=allNav.find(x=>x[1]===location.pathname); const title=current?.[0]??'Fintech Panel'
-  const authRoot=document.querySelector('[data-auth-role]') as HTMLElement|null
-  const role=authRoot?.dataset.authRole||'viewer'; const user=authRoot?.dataset.authUser||'Administrator'
-  return <div className={cls('ops-shell',collapsed&&'sidebar-collapsed')}>
-    <aside className="ops-sidebar">
-      <div className="ops-brand"><div className="ops-brandmark">F</div><div className="ops-brandtext"><strong>Fintech Panel</strong><span>Operations Console</span></div><button className="ops-collapse" onClick={()=>setCollapsed(v=>!v)}><Menu size={17}/></button></div>
-      <nav>{navGroups.map(group=><div className="ops-navgroup" key={group.label}><span className="ops-navlabel">{group.label}</span>{group.items.map(([label,href,Icon])=><NavLink key={href} to={href} end={href==='/' } className={({isActive})=>cls('ops-navlink',isActive&&'active')} title={label}><Icon size={17}/><span>{label}</span></NavLink>)}</div>)}</nav>
-      <div className="ops-sidefoot"><div className="ops-live"><span/>Live workspace</div><button><LogOut size={16}/><span>Sign out</span></button></div>
-    </aside>
-    <main className="ops-main">
-      <header className="ops-topbar"><div><p>Administration / {role}</p><h1>{title}</h1></div><div className="ops-topactions"><div className="ops-livepill"><span/> Live</div><button className="ops-iconbtn" onClick={()=>setNotices(v=>!v)}><Bell size={17}/></button><div className="ops-user"><div>{user.slice(0,2).toUpperCase()}</div><span><strong>{user}</strong><small>{role}</small></span><ChevronDown size={14}/></div></div></header>
-      {notices&&<div className="ops-notices"><div><strong>Operations center</strong><button onClick={()=>setNotices(false)}><X size={15}/></button></div><p><CheckCircle2 size={15}/> Live data is sourced from Supabase tables and authorized provider adapters.</p><p><ShieldCheck size={15}/> Bank passwords, PINs, OTPs and browser-session cookies are not collected by this console.</p></div>}
-      {children}
-    </main>
-  </div>
-}
 
 function SummaryStrip(){const d=useOpsData();const deposits=d.transactions.filter(t=>Number(t.amount)>0).reduce((s,t)=>s+Math.abs(Number(t.amount)),0);const withdrawals=d.transactions.filter(t=>Number(t.amount)<0).reduce((s,t)=>s+Math.abs(Number(t.amount)),0);const total=d.accounts.reduce((s,a)=>s+Number(a.balance||0),0);return <div className="ops-summary"><div><span>Total balance</span><strong>{money(total,d.accounts[0]?.currency||'TRY')}</strong></div><div><span>Deposits</span><strong className="positive">+{money(deposits,d.accounts[0]?.currency||'TRY')}</strong></div><div><span>Withdrawals</span><strong className="negative">-{money(withdrawals,d.accounts[0]?.currency||'TRY')}</strong></div><div><span>Accounts</span><strong>{d.accounts.length}</strong></div></div>}
 
@@ -106,4 +57,10 @@ function Callbacks(){const d=useOpsData();const rows=d.auditLogs.filter(a=>/call
 function UserGroups(){return <div className="ops-page"><section className="ops-panel"><div className="ops-panelhead"><div><h2>User groups</h2><p>Role grouping is ready for workspace-specific RBAC rules.</p></div></div><div className="ops-reportgrid"><div><Users/><strong>Administrators</strong><span>Full operations access</span></div><div><ShieldCheck/><strong>Reviewers</strong><span>Review and reconciliation access</span></div><div><FileClock/><strong>Viewers</strong><span>Read-only visibility</span></div></div></section></div>}
 function SettingsPage(){return <div className="ops-page"><section className="ops-panel"><div className="ops-panelhead"><div><h2>Integration policy</h2><p>Server-side provider configuration and workspace controls</p></div></div><div className="ops-settings"><div><ShieldCheck/><span><strong>Consent-based bank access</strong><small>Use official Open Banking/OAuth provider adapters and bank-hosted authorization.</small></span></div><div><DatabaseZap/><span><strong>Secrets stay server-side</strong><small>Client secrets, access tokens and signing keys belong in Supabase secrets, never browser code.</small></span></div><div><Webhook/><span><strong>Sanitized callbacks</strong><small>Store provider event metadata without collecting banking OTP or credential content.</small></span></div></div></section></div>}
 
-export default function AppOpsV3(){return <Shell><Routes><Route path="/" element={<Dashboard/>}/><Route path="/bank-accounts" element={<BankAccounts/>}/><Route path="/transactions" element={<Transactions/>}/><Route path="/account-movements" element={<Movements/>}/><Route path="/account-history" element={<AccountHistory/>}/><Route path="/reports" element={<Reports/>}/><Route path="/reconciliation" element={<Reconciliation/>}/><Route path="/connection-status" element={<ConnectionStatus/>}/><Route path="/metrics" element={<Metrics/>}/><Route path="/bank-connections" element={<BankConnections/>}/><Route path="/users" element={<UsersPage/>}/><Route path="/user-groups" element={<UserGroups/>}/><Route path="/audit-log" element={<Audit/>}/><Route path="/callbacks" element={<Callbacks/>}/><Route path="/settings" element={<SettingsPage/>}/><Route path="*" element={<Navigate to="/" replace/>}/></Routes></Shell>}
+export {
+  Dashboard, BankAccounts, Transactions, Movements, AccountHistory, Reports,
+  Reconciliation, ConnectionStatus, Metrics, BankConnections, UsersPage,
+  UserGroups, Audit, Callbacks, SettingsPage,
+}
+
+export default Dashboard
