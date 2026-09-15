@@ -1,6 +1,8 @@
 name: Bank Automation Skeleton
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '15 5 * * *'
@@ -36,6 +38,8 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Verify application build
+        run: npm run build --if-present
       - name: Run scraper skeleton
         run: npm run automation:scrape
       - name: Run payment rule engine
