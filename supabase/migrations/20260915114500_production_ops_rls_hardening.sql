@@ -1,0 +1,13 @@
+alter table public.provider_webhook_events add column if not exists user_id uuid references auth.users(id) on delete cascade;
+create index if not exists provider_webhook_events_user_date_idx on public.provider_webhook_events(user_id,created_at desc);
+drop policy if exists authenticated_read_profiles on public.profiles;
+drop policy if exists profiles_read on public.profiles;
+create policy profiles_read_self_or_admin on public.profiles for select to authenticated using(id=(select auth.uid()) or public.current_user_role()='admin'::public.app_role);
+drop policy if exists authenticated_read_audit on public.audit_logs;
+drop policy if exists audit_logs_read on public.audit_logs;
+create policy audit_logs_read_self_or_admin on public.audit_logs for select to authenticated using(user_id=(select auth.uid()) or actor_id=(select auth.uid()) or public.current_user_role()='admin'::public.app_role);
+drop policy if exists provider_webhook_events_read on public.provider_webhook_events;
+create policy provider_webhook_events_read on public.provider_webhook_events for select to authenticated using(user_id=(select auth.uid()) or public.current_user_role()='admin'::public.app_role);
+drop policy if exists reconciliation_items_read on public.reconciliation_items;
+create policy reconciliation_items_read on public.reconciliation_items for select to authenticated using(exists(select 1 from public.bank_accounts a where a.id=account_id and a.user_id=(select auth.uid())) or public.current_user_role()='admin'::public.app_role);
+grant select on public.provider_webhook_events, public.reconciliation_items to authenticated;
