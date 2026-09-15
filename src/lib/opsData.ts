@@ -1,77 +1,34 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase'
 
-export type BankAccount = { id:string; bank_name:string; account_name:string; iban_masked:string; currency:string; balance:number; deposits_enabled:boolean; withdrawals_enabled:boolean; status:string; updated_at:string }
-export type Tx = { id:string; external_ref:string|null; account_id:string|null; occurred_at:string; direction:string; method:string; counterparty:string|null; counterparty_iban_masked:string|null; amount:number; balance_after:number|null; status:string }
-export type Movement = { id:string; account_id:string|null; occurred_at:string; movement_type:string; reference:string|null; source:string; amount:number; running_balance:number|null; status:string }
-export type Connection = { id:string; provider:string; external_connection_id:string|null; institution_name:string|null; status:string; scopes:string[]; consent_expires_at:string|null; last_sync_at:string|null }
-export type PaymentRequest = { id:string; account_id:string|null; direction:'withdrawal'|'transfer'; amount:number; currency:string; destination_iban_masked:string|null; destination_name:string|null; description:string|null; provider_payment_id:string|null; status:string; authorization_url:string|null; requested_by:string|null; approved_by:string|null; approved_at:string|null; created_at:string; updated_at:string }
-export type Profile = { id:string; full_name:string|null; role:string; avatar_url:string|null; created_at:string }
-export type Audit = { id:string; actor_label:string|null; action:string; resource_type:string|null; resource_id:string|null; detail:string|null; severity:string; created_at:string }
-export type History = { id:string; account_id:string|null; event_type:string; event_message:string; status:string; created_at:string }
-export type ReconciliationItem = { id:string; account_id:string|null; ledger_balance:number; bank_balance:number; difference:number; status:string; created_at:string }
+export type BankAccount={id:string;user_id?:string|null;bank_name:string;account_name:string;iban_masked:string;currency:string;balance:number;deposits_enabled:boolean;withdrawals_enabled:boolean;status:string;updated_at:string}
+export type Tx={id:string;user_id?:string|null;external_ref:string|null;account_id:string|null;occurred_at:string;direction:string;method:string;counterparty:string|null;counterparty_iban_masked:string|null;amount:number;balance_after:number|null;status:string}
+export type Movement={id:string;user_id?:string|null;account_id:string|null;occurred_at:string;movement_type:string;reference:string|null;source:string;amount:number;running_balance:number|null;status:string}
+export type Connection={id:string;user_id?:string|null;provider_id?:string|null;provider:string;external_connection_id:string|null;institution_name:string|null;status:string;scopes:string[];consent_expires_at:string|null;last_sync_at:string|null}
+export type PaymentRequest={id:string;user_id?:string|null;idempotency_key?:string;account_id:string|null;direction:'withdrawal'|'transfer';amount:number;currency:string;destination_iban_masked:string|null;destination_name:string|null;description:string|null;provider_payment_id:string|null;status:string;authorization_url:string|null;requested_by:string|null;approved_by:string|null;approved_at:string|null;created_at:string;updated_at:string}
+export type Profile={id:string;full_name:string|null;role:string;avatar_url:string|null;created_at:string}
+export type Audit={id:string;user_id?:string|null;actor_label:string|null;action:string;resource_type:string|null;resource_id:string|null;detail:string|null;severity:string;created_at:string}
+export type History={id:string;user_id?:string|null;account_id:string|null;event_type:string;event_message:string;status:string;created_at:string}
+export type ReconciliationItem={id:string;account_id:string|null;ledger_balance:number;bank_balance:number;difference:number;status:string;created_at:string}
+export type BankProvider={id:string;name:string;country:string;currency:string;logo_url:string|null;adapter_key:string;auth_mode:string;active:boolean}
+export type AutomationRule={id:string;user_id:string;name:string;from_account_id:string;to_account_id:string|null;condition:Record<string,unknown>;amount_type:'fixed'|'percent'|'all_above';amount_value:number;schedule:string|null;active:boolean;last_run_at:string|null;created_at:string}
+export type WebhookEvent={id:string;user_id?:string|null;provider:string;provider_event_id:string|null;event_type:string;signature_valid:boolean;processed_at:string|null;created_at:string}
+export type WebhookAttempt={id:string;user_id:string;event_id:string|null;target_type:string;status:string;attempts:number;last_error:string|null;next_retry_at:string|null;created_at:string}
+export type UserGroup={id:string;owner_id:string;name:string;description:string|null;created_at:string}
+export type NotificationPreference={user_id:string;email_enabled:boolean;webhook_enabled:boolean;security_alerts:boolean;operations_alerts:boolean;updated_at:string}
 
-type QueryResult = { data: unknown[] | null; error: { message:string } | null }
+type QueryResult={data:unknown[]|null;error:{message:string}|null}
 
-export function useOpsData() {
-  const [accounts,setAccounts]=useState<BankAccount[]>([])
-  const [transactions,setTransactions]=useState<Tx[]>([])
-  const [movements,setMovements]=useState<Movement[]>([])
-  const [connections,setConnections]=useState<Connection[]>([])
-  const [paymentRequests,setPaymentRequests]=useState<PaymentRequest[]>([])
-  const [profiles,setProfiles]=useState<Profile[]>([])
-  const [auditLogs,setAuditLogs]=useState<Audit[]>([])
-  const [history,setHistory]=useState<History[]>([])
-  const [reconciliation,setReconciliation]=useState<ReconciliationItem[]>([])
-  const [loading,setLoading]=useState(true)
-  const [error,setError]=useState<string|null>(null)
-  const [warnings,setWarnings]=useState<string[]>([])
-
-  const load=useCallback(async()=>{
-    if(!supabase){setLoading(false);setError('Supabase is not configured');return}
-    setLoading(true); setError(null); setWarnings([])
-
-    const results=await Promise.all([
-      supabase.from('bank_accounts').select('*').order('updated_at',{ascending:false}),
-      supabase.from('transactions').select('*').order('occurred_at',{ascending:false}).limit(200),
-      supabase.from('account_movements').select('*').order('occurred_at',{ascending:false}).limit(200),
-      supabase.from('bank_connections').select('*').order('created_at',{ascending:false}),
-      supabase.from('payment_requests').select('*').order('created_at',{ascending:false}).limit(200),
-      supabase.from('profiles').select('*').order('created_at',{ascending:false}),
-      supabase.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(200),
-      supabase.from('account_history').select('*').order('created_at',{ascending:false}).limit(200),
-      supabase.from('reconciliation_items').select('*').order('created_at',{ascending:false}).limit(100),
-    ]) as QueryResult[]
-
-    const [a,t,m,c,pay,p,l,h,r]=results
-    const coreErrors=[a,t,c].filter(x=>x.error).map(x=>x.error!.message)
-    const optionalErrors=[m,pay,p,l,h,r].filter(x=>x.error).map(x=>x.error!.message)
-    if(coreErrors.length) setError(coreErrors[0])
-    setWarnings(Array.from(new Set(optionalErrors)))
-
-    setAccounts((a.data||[]) as BankAccount[])
-    setTransactions((t.data||[]) as Tx[])
-    setMovements((m.data||[]) as Movement[])
-    setConnections((c.data||[]) as Connection[])
-    setPaymentRequests((pay.data||[]) as PaymentRequest[])
-    setProfiles((p.data||[]) as Profile[])
-    setAuditLogs((l.data||[]) as Audit[])
-    setHistory((h.data||[]) as History[])
-    setReconciliation((r.data||[]) as ReconciliationItem[])
-    setLoading(false)
-  },[])
-
-  useEffect(()=>{ void load(); if(!supabase) return; const client=supabase; const channel=client.channel('ops-live')
-    .on('postgres_changes',{event:'*',schema:'public',table:'bank_accounts'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'transactions'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'account_movements'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'bank_connections'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'payment_requests'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'account_history'},()=>void load())
-    .on('postgres_changes',{event:'*',schema:'public',table:'reconciliation_items'},()=>void load())
-    .subscribe()
-    return()=>{void client.removeChannel(channel)}
-  },[load])
-
-  return {accounts,transactions,movements,connections,paymentRequests,profiles,auditLogs,history,reconciliation,loading,error,warnings,reload:load}
+export function useOpsData(){
+ const [accounts,setAccounts]=useState<BankAccount[]>([]),[transactions,setTransactions]=useState<Tx[]>([]),[movements,setMovements]=useState<Movement[]>([]),[connections,setConnections]=useState<Connection[]>([]),[paymentRequests,setPaymentRequests]=useState<PaymentRequest[]>([]),[profiles,setProfiles]=useState<Profile[]>([]),[auditLogs,setAuditLogs]=useState<Audit[]>([]),[history,setHistory]=useState<History[]>([]),[reconciliation,setReconciliation]=useState<ReconciliationItem[]>([]),[providers,setProviders]=useState<BankProvider[]>([]),[automationRules,setAutomationRules]=useState<AutomationRule[]>([]),[webhookEvents,setWebhookEvents]=useState<WebhookEvent[]>([]),[webhookAttempts,setWebhookAttempts]=useState<WebhookAttempt[]>([]),[userGroups,setUserGroups]=useState<UserGroup[]>([]),[notificationPreferences,setNotificationPreferences]=useState<NotificationPreference[]>([])
+ const [loading,setLoading]=useState(true);const[error,setError]=useState<string|null>(null);const[warnings,setWarnings]=useState<string[]>([])
+ const load=useCallback(async()=>{if(!supabase){setLoading(false);setError('Supabase is not configured');return}setLoading(true);setError(null);setWarnings([])
+  const results=await Promise.all([
+   supabase.from('bank_accounts').select('*').order('updated_at',{ascending:false}),supabase.from('transactions').select('*').order('occurred_at',{ascending:false}).limit(500),supabase.from('account_movements').select('*').order('occurred_at',{ascending:false}).limit(500),supabase.from('bank_connections').select('*').order('created_at',{ascending:false}),supabase.from('payment_requests').select('*').order('created_at',{ascending:false}).limit(300),supabase.from('profiles').select('*').order('created_at',{ascending:false}),supabase.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(500),supabase.from('account_history').select('*').order('created_at',{ascending:false}).limit(500),supabase.from('reconciliation_items').select('*').order('created_at',{ascending:false}).limit(200),supabase.from('bank_providers').select('*').eq('active',true).order('name'),supabase.from('automation_rules').select('*').order('created_at',{ascending:false}),supabase.from('provider_webhook_events').select('id,user_id,provider,provider_event_id,event_type,signature_valid,processed_at,created_at').order('created_at',{ascending:false}).limit(200),supabase.from('webhook_delivery_attempts').select('*').order('created_at',{ascending:false}).limit(200),supabase.from('user_groups').select('*').order('created_at',{ascending:false}),supabase.from('notification_preferences').select('*').limit(1)
+  ]) as QueryResult[]
+  const[a,t,m,c,pay,p,l,h,r,bp,ar,we,wa,ug,np]=results;const coreErrors=[a,t,c].filter(x=>x.error).map(x=>x.error!.message);const optionalErrors=[m,pay,p,l,h,r,bp,ar,we,wa,ug,np].filter(x=>x.error).map(x=>x.error!.message);if(coreErrors.length)setError(coreErrors[0]);setWarnings([...new Set(optionalErrors)])
+  setAccounts((a.data||[]) as BankAccount[]);setTransactions((t.data||[]) as Tx[]);setMovements((m.data||[]) as Movement[]);setConnections((c.data||[]) as Connection[]);setPaymentRequests((pay.data||[]) as PaymentRequest[]);setProfiles((p.data||[]) as Profile[]);setAuditLogs((l.data||[]) as Audit[]);setHistory((h.data||[]) as History[]);setReconciliation((r.data||[]) as ReconciliationItem[]);setProviders((bp.data||[]) as BankProvider[]);setAutomationRules((ar.data||[]) as AutomationRule[]);setWebhookEvents((we.data||[]) as WebhookEvent[]);setWebhookAttempts((wa.data||[]) as WebhookAttempt[]);setUserGroups((ug.data||[]) as UserGroup[]);setNotificationPreferences((np.data||[]) as NotificationPreference[]);setLoading(false)
+ },[])
+ useEffect(()=>{void load();if(!supabase)return;const client=supabase;const tables=['bank_accounts','transactions','account_movements','bank_connections','payment_requests','account_history','reconciliation_items','audit_logs','automation_rules','provider_webhook_events','webhook_delivery_attempts','user_groups','notification_preferences'];const channel=client.channel('ops-live-v2');tables.forEach(table=>channel.on('postgres_changes',{event:'*',schema:'public',table},()=>void load()));channel.subscribe();return()=>{void client.removeChannel(channel)}},[load])
+ return{accounts,transactions,movements,connections,paymentRequests,profiles,auditLogs,history,reconciliation,providers,automationRules,webhookEvents,webhookAttempts,userGroups,notificationPreferences,loading,error,warnings,reload:load}
 }
