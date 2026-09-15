@@ -1,5 +1,7 @@
 # Fintech Bank Panel
 
+[![Bank Automation Skeleton](https://github.com/EscobarsTmg/tether/actions/workflows/automation.yml/badge.svg?branch=main)](https://github.com/EscobarsTmg/tether/actions/workflows/automation.yml)
+
 React + Vite + TypeScript administration dashboard scaffold for a sandbox/open-banking style fintech operations panel.
 
 ## Run locally
