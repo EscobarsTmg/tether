@@ -6,7 +6,9 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "build": "vite build",
+    "build:checked": "tsc -b && vite build",
     "preview": "vite preview",
     "automation:scrape": "node automation/scraper.js",
     "automation:rules": "tsx automation/rule-engine.ts"
