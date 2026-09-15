@@ -1,19 +1,17 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import AppLiveNext from './AppLiveNext'
+import AppOpsV3 from './AppOpsV3'
 import AuthGate from './auth/AuthGate'
 import './styles.css'
 import './auth/auth-extra.css'
-import './dashboard-v2.css'
-import './ui-extra.css'
-import './live-next.css'
+import './ops-v3.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthGate>
-        <AppLiveNext />
+        <AppOpsV3 />
       </AuthGate>
     </BrowserRouter>
   </React.StrictMode>,
