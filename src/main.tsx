@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import AppRoot from './AppRoot'
+import AppRoot from './router'
 import AuthGate from './auth/AuthGate'
 import './styles.css'
 import './auth/auth-extra.css'
