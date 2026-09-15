@@ -11,6 +11,8 @@ export type Audit = { id:string; actor_label:string|null; action:string; resourc
 export type History = { id:string; account_id:string|null; event_type:string; event_message:string; status:string; created_at:string }
 export type ReconciliationItem = { id:string; account_id:string|null; ledger_balance:number; bank_balance:number; difference:number; status:string; created_at:string }
 
+type QueryResult = { data: unknown[] | null; error: { message:string } | null }
+
 export function useOpsData() {
   const [accounts,setAccounts]=useState<BankAccount[]>([])
   const [transactions,setTransactions]=useState<Tx[]>([])
@@ -23,11 +25,13 @@ export function useOpsData() {
   const [reconciliation,setReconciliation]=useState<ReconciliationItem[]>([])
   const [loading,setLoading]=useState(true)
   const [error,setError]=useState<string|null>(null)
+  const [warnings,setWarnings]=useState<string[]>([])
 
   const load=useCallback(async()=>{
     if(!supabase){setLoading(false);setError('Supabase is not configured');return}
-    setLoading(true); setError(null)
-    const [a,t,m,c,pay,p,l,h,r]=await Promise.all([
+    setLoading(true); setError(null); setWarnings([])
+
+    const results=await Promise.all([
       supabase.from('bank_accounts').select('*').order('updated_at',{ascending:false}),
       supabase.from('transactions').select('*').order('occurred_at',{ascending:false}).limit(200),
       supabase.from('account_movements').select('*').order('occurred_at',{ascending:false}).limit(200),
@@ -37,13 +41,23 @@ export function useOpsData() {
       supabase.from('audit_logs').select('*').order('created_at',{ascending:false}).limit(200),
       supabase.from('account_history').select('*').order('created_at',{ascending:false}).limit(200),
       supabase.from('reconciliation_items').select('*').order('created_at',{ascending:false}).limit(100),
-    ])
-    const firstError=[a,t,m,c,pay,p,l,h,r].find(x=>x.error)?.error
-    if(firstError){setError(firstError.message)}
-    setAccounts((a.data||[]) as BankAccount[]); setTransactions((t.data||[]) as Tx[]); setMovements((m.data||[]) as Movement[])
-    setConnections((c.data||[]) as Connection[]); setPaymentRequests((pay.data||[]) as PaymentRequest[])
-    setProfiles((p.data||[]) as Profile[]); setAuditLogs((l.data||[]) as Audit[])
-    setHistory((h.data||[]) as History[]); setReconciliation((r.data||[]) as ReconciliationItem[])
+    ]) as QueryResult[]
+
+    const [a,t,m,c,pay,p,l,h,r]=results
+    const coreErrors=[a,t,c].filter(x=>x.error).map(x=>x.error!.message)
+    const optionalErrors=[m,pay,p,l,h,r].filter(x=>x.error).map(x=>x.error!.message)
+    if(coreErrors.length) setError(coreErrors[0])
+    setWarnings(Array.from(new Set(optionalErrors)))
+
+    setAccounts((a.data||[]) as BankAccount[])
+    setTransactions((t.data||[]) as Tx[])
+    setMovements((m.data||[]) as Movement[])
+    setConnections((c.data||[]) as Connection[])
+    setPaymentRequests((pay.data||[]) as PaymentRequest[])
+    setProfiles((p.data||[]) as Profile[])
+    setAuditLogs((l.data||[]) as Audit[])
+    setHistory((h.data||[]) as History[])
+    setReconciliation((r.data||[]) as ReconciliationItem[])
     setLoading(false)
   },[])
 
@@ -53,9 +67,11 @@ export function useOpsData() {
     .on('postgres_changes',{event:'*',schema:'public',table:'account_movements'},()=>void load())
     .on('postgres_changes',{event:'*',schema:'public',table:'bank_connections'},()=>void load())
     .on('postgres_changes',{event:'*',schema:'public',table:'payment_requests'},()=>void load())
+    .on('postgres_changes',{event:'*',schema:'public',table:'account_history'},()=>void load())
+    .on('postgres_changes',{event:'*',schema:'public',table:'reconciliation_items'},()=>void load())
     .subscribe()
     return()=>{void client.removeChannel(channel)}
   },[load])
 
-  return {accounts,transactions,movements,connections,paymentRequests,profiles,auditLogs,history,reconciliation,loading,error,reload:load}
+  return {accounts,transactions,movements,connections,paymentRequests,profiles,auditLogs,history,reconciliation,loading,error,warnings,reload:load}
 }
