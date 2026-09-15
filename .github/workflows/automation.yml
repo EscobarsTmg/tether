@@ -1,0 +1,44 @@
+name: Bank Automation Skeleton
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 5 * * *'
+    - cron: '15 13 * * *'
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      BANK_START_URL: ${{ secrets.BANK_START_URL }}
+      TELEGRAM_WEBHOOK_URL: ${{ secrets.TELEGRAM_WEBHOOK_URL }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      RULE_ACCOUNT_ID: ${{ secrets.RULE_ACCOUNT_ID }}
+      RULE_MIN_BALANCE: ${{ secrets.RULE_MIN_BALANCE }}
+      RULE_TRANSFER_AMOUNT: ${{ secrets.RULE_TRANSFER_AMOUNT }}
+      RULE_CURRENCY: ${{ secrets.RULE_CURRENCY }}
+      RULE_DESTINATION_NAME: ${{ secrets.RULE_DESTINATION_NAME }}
+      RULE_DESTINATION_IBAN_MASKED: ${{ secrets.RULE_DESTINATION_IBAN_MASKED }}
+      RULE_DESCRIPTION: ${{ secrets.RULE_DESCRIPTION }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scraper skeleton
+        run: npm run automation:scrape
+
+      - name: Run payment rule engine
+        run: npm run automation:rules
