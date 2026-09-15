@@ -6,6 +6,9 @@ on:
     - cron: '15 5 * * *'
     - cron: '15 13 * * *'
 
+permissions:
+  contents: read
+
 jobs:
   automation:
     runs-on: ubuntu-latest
@@ -27,18 +30,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-
       - name: Install dependencies
-        run: npm ci
-
+        run: npm install --no-audit --no-fund
       - name: Run scraper skeleton
         run: npm run automation:scrape
-
       - name: Run payment rule engine
         run: npm run automation:rules
