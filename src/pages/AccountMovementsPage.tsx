@@ -1,0 +1,9 @@
+import { FormEvent, useMemo, useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { Activity, BarChart3, Building2, ChevronRight, CircleDollarSign, Clock3, DatabaseZap, FileClock, FileText, Gauge, History, Link2, ListChecks, RefreshCw, Search, Settings, ShieldCheck, SlidersHorizontal, Users, WalletCards, Webhook, X, Plus, Download, Landmark, CircleAlert, CheckCircle2, PauseCircle, ArrowDownToLine, ArrowUpFromLine, Copy, Boxes, Filter, UserRoundCog } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { bankCatalog, bankByProvider } from '../lib/bankCatalog'
+import { useOpsData } from '../lib/opsData'
+import { cls, money, dt, Badge, PageState, Empty, Stat, copyText, SummaryStrip, TransactionTable } from '../components/ui/OperationsUi'
+
+export default function AccountMovementsPage(){const d=useOpsData();return <div className="ops-page"><PageState loading={d.loading} error={d.error} reload={d.reload}/>{!d.loading&&!d.error&&<section className="ops-panel"><div className="ops-panelhead"><div><h2>Account movements</h2><p>Normalized provider and ledger events</p></div></div>{d.movements.length?<div className="ops-tablewrap"><table className="ops-table"><thead><tr><th>Time</th><th>Type</th><th>Reference</th><th>Source</th><th className="right">Amount</th><th className="right">Running balance</th><th>Status</th></tr></thead><tbody>{d.movements.map(m=><tr key={m.id}><td>{dt(m.occurred_at)}</td><td>{m.movement_type}</td><td className="mono">{m.reference||'—'}</td><td>{m.source}</td><td className={cls('right amount',Number(m.amount)>=0?'positive':'negative')}>{money(Number(m.amount))}</td><td className="right">{m.running_balance==null?'—':money(Number(m.running_balance))}</td><td><Badge value={m.status}/></td></tr>)}</tbody></table></div>:<Empty title="No movement data" detail="Normalized account movement events will appear here."/>}</section>}</div>}

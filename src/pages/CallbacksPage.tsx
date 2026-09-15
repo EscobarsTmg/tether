@@ -1,0 +1,9 @@
+import { FormEvent, useMemo, useState } from 'react'
+import { NavLink } from 'react-router-dom'
+import { Activity, BarChart3, Building2, ChevronRight, CircleDollarSign, Clock3, DatabaseZap, FileClock, FileText, Gauge, History, Link2, ListChecks, RefreshCw, Search, Settings, ShieldCheck, SlidersHorizontal, Users, WalletCards, Webhook, X, Plus, Download, Landmark, CircleAlert, CheckCircle2, PauseCircle, ArrowDownToLine, ArrowUpFromLine, Copy, Boxes, Filter, UserRoundCog } from 'lucide-react'
+import { supabase } from '../lib/supabase'
+import { bankCatalog, bankByProvider } from '../lib/bankCatalog'
+import { useOpsData } from '../lib/opsData'
+import { cls, money, dt, Badge, PageState, Empty, Stat, copyText, SummaryStrip, TransactionTable } from '../components/ui/OperationsUi'
+
+export default function CallbacksPage(){const d=useOpsData();const rows=d.auditLogs.filter(a=>/callback|webhook|provider|sync/i.test(`${a.action} ${a.detail||''}`));return <div className="ops-page"><PageState loading={d.loading} error={d.error} reload={d.reload}/>{!d.loading&&!d.error&&<section className="ops-panel"><div className="ops-panelhead"><div><h2>Provider callbacks</h2><p>Sanitized provider, webhook and synchronization events. Sensitive authentication messages are not ingested here.</p></div></div>{rows.length?<div className="ops-tablewrap"><table className="ops-table"><thead><tr><th>Received</th><th>Source</th><th>Event</th><th>Detail</th><th>Status</th></tr></thead><tbody>{rows.map(a=><tr key={a.id}><td>{dt(a.created_at)}</td><td>{a.resource_type||'provider'}</td><td>{a.action}</td><td>{a.detail||'—'}</td><td><Badge value={a.severity}/></td></tr>)}</tbody></table></div>:<Empty title="No callback events" detail="Provider webhook and synchronization events will appear here after integration."/>}</section>}</div>}
