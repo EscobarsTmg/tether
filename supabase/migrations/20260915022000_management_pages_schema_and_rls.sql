@@ -1,0 +1,24 @@
+alter table public.profiles add column if not exists email text, add column if not exists last_sign_in_at timestamptz, add column if not exists active boolean not null default true;
+update public.profiles p set email=u.email,last_sign_in_at=u.last_sign_in_at from auth.users u where u.id=p.id and (p.email is distinct from u.email or p.last_sign_in_at is distinct from u.last_sign_in_at);
+alter table public.user_groups add column if not exists permissions jsonb not null default '{}'::jsonb, add column if not exists deleted_at timestamptz;
+
+drop policy if exists user_groups_owner on public.user_groups;
+drop policy if exists user_groups_admin_read on public.user_groups;
+drop policy if exists user_groups_reviewer_read on public.user_groups;
+drop policy if exists user_groups_admin_insert on public.user_groups;
+drop policy if exists user_groups_admin_update on public.user_groups;
+drop policy if exists user_group_members_visible on public.user_group_members;
+drop policy if exists user_group_members_admin_read on public.user_group_members;
+drop policy if exists user_group_members_reviewer_read on public.user_group_members;
+drop policy if exists user_group_members_admin_insert on public.user_group_members;
+drop policy if exists user_group_members_admin_delete on public.user_group_members;
+create policy user_groups_admin_read on public.user_groups for select to authenticated using (public.current_user_role()='admin'::public.app_role);
+create policy user_groups_reviewer_read on public.user_groups for select to authenticated using (public.current_user_role()='reviewer'::public.app_role);
+create policy user_groups_admin_insert on public.user_groups for insert to authenticated with check (public.current_user_role()='admin'::public.app_role and owner_id=(select auth.uid()));
+create policy user_groups_admin_update on public.user_groups for update to authenticated using (public.current_user_role()='admin'::public.app_role) with check (public.current_user_role()='admin'::public.app_role);
+create policy user_group_members_admin_read on public.user_group_members for select to authenticated using (public.current_user_role()='admin'::public.app_role);
+create policy user_group_members_reviewer_read on public.user_group_members for select to authenticated using (public.current_user_role()='reviewer'::public.app_role);
+create policy user_group_members_admin_insert on public.user_group_members for insert to authenticated with check (public.current_user_role()='admin'::public.app_role);
+create policy user_group_members_admin_delete on public.user_group_members for delete to authenticated using (public.current_user_role()='admin'::public.app_role);
+create index if not exists idx_user_groups_active on public.user_groups(deleted_at) where deleted_at is null;
+create index if not exists idx_user_group_members_user on public.user_group_members(user_id);
