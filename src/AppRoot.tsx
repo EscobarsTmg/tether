@@ -2,6 +2,7 @@ import { Link, Route, Routes } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import AppOpsV3 from './AppOpsV3'
 import SecurityCenter from './SecurityCenter'
+import MultiAccountSandboxPage from './MultiAccountSandboxPage'
 
 function OperationsWithSecurityShortcut(){
   return <>
@@ -13,6 +14,7 @@ function OperationsWithSecurityShortcut(){
 export default function AppRoot(){
   return <Routes>
     <Route path="/security-sessions" element={<SecurityCenter/>}/>
+    <Route path="/sandbox/multi-account" element={<MultiAccountSandboxPage/>}/>
     <Route path="/*" element={<OperationsWithSecurityShortcut/>}/>
   </Routes>
 }
