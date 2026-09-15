@@ -11,6 +11,24 @@ npm install
 npm run dev
 ```
 
+## Cloud Browser (Browserless.io)
+
+1. browserless.io'dan hesap aç.
+2. Dashboard'dan token al.
+3. `.env` dosyasına aşağıdaki değeri ekle:
+
+```text
+BROWSERLESS_WS_ENDPOINT=wss://production-sfo.browserless.io?token=TOKEN
+```
+
+4. Cloud browser otomasyon sunucusunu çalıştır:
+
+```bash
+npm install puppeteer-core && npm run automation:server
+```
+
+Puppeteer kurulumu için: `npm uninstall puppeteer && npm install puppeteer-core`
+
 ## Bolt.new
 
 Import this GitHub repository into Bolt.new. The project works immediately with sandbox data.

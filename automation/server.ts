@@ -1,9 +1,11 @@
 import express from 'express';
 import 'dotenv/config';
 import cors from 'cors';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 import { scraperFactory } from './scrapers/scraperFactory.js';
 import { ensureConnection, ensureAccount, persistTransactions } from './persistence/bankPersistence.js';
+
+if (!process.env.BROWSERLESS_WS_ENDPOINT) throw new Error('BROWSERLESS_WS_ENDPOINT is required in .env');
 
 const app = express();
 
@@ -35,9 +37,8 @@ app.post('/api/connect', async (req, res) => {
     return res.status(400).json({ error: 'bankId, username, password zorunlu' });
   }
 
-  const browser = await puppeteer.launch({
-    headless: process.env.NODE_ENV === 'production',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: process.env.BROWSERLESS_WS_ENDPOINT!
   });
 
   try {
@@ -52,11 +53,11 @@ app.post('/api/connect', async (req, res) => {
     await scraper.loginAndGetSession(page);
     await scraper.saveCookies(page); // çerezler Supabase'e gider
 
-    await browser.close();
+    await browser.disconnect();
     // credentials burada scope dışına çıkar, saklanmaz.
     res.json({ success: true, connectionId: connection.id });
   } catch (err: any) {
-    await browser.close();
+    await browser.disconnect();
     res.status(500).json({ error: err.message });
   }
 });
@@ -68,9 +69,8 @@ app.post('/api/sync', async (req, res) => {
     return res.status(400).json({ error: 'connectionId ve bankId zorunlu' });
   }
 
-  const browser = await puppeteer.launch({
-    headless: process.env.NODE_ENV === 'production',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  const browser = await puppeteer.connect({
+    browserWSEndpoint: process.env.BROWSERLESS_WS_ENDPOINT!
   });
 
   try {
@@ -79,7 +79,7 @@ app.post('/api/sync', async (req, res) => {
 
     const hasCookies = await scraper.loadCookies(page);
     if (!hasCookies) {
-      await browser.close();
+      await browser.disconnect();
       return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Yeniden bağlanmanız gerekiyor' });
     }
 
@@ -93,10 +93,10 @@ app.post('/api/sync', async (req, res) => {
     // Çerezleri yenile (bankalar her istekte cookie yeniler)
     await scraper.saveCookies(page);
 
-    await browser.close();
+    await browser.disconnect();
     res.json({ success: true, account });
   } catch (err: any) {
-    await browser.close();
+    await browser.disconnect();
     res.status(500).json({ error: err.message });
   }
 });
