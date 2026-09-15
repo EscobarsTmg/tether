@@ -1,0 +1,17 @@
+import { useCallback,useEffect,useState } from 'react'
+import { supabaseClient } from '../lib/supabaseClient'
+import type { BankAccount,Tx,PaymentRequest,Audit,Connection } from '../lib/opsData'
+export type AuditRow=Audit&{actor_id?:string|null;metadata?:Record<string,unknown>|null}
+type Resource<T>={data:T[];loading:boolean;error:string|null;refetch:()=>Promise<void>}
+function useTable<T>(table:string,orderColumn:string,limit=500,realtime=false):Resource<T>{
+  const[data,setData]=useState<T[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null)
+  const refetch=useCallback(async()=>{if(!supabaseClient){setError('Supabase yapılandırılmamış');setLoading(false);return}setLoading(true);const r=await supabaseClient.from(table).select('*').order(orderColumn,{ascending:false}).limit(limit);setError(r.error?.message||null);setData((r.data||[]) as T[]);setLoading(false)},[table,orderColumn,limit])
+  useEffect(()=>{void refetch();if(!supabaseClient||!realtime)return;const c=supabaseClient.channel(`live-${table}`).on('postgres_changes',{event:'*',schema:'public',table},()=>void refetch()).subscribe();return()=>{if(supabaseClient)void supabaseClient.removeChannel(c)}},[refetch,realtime,table])
+  return{data,loading,error,refetch}
+}
+export function useOpsData(){return{
+  bankAccounts:useTable<BankAccount>('bank_accounts','updated_at',500),transactions:useTable<Tx>('transactions','occurred_at',500,true),paymentRequests:useTable<PaymentRequest>('payment_requests','created_at',300,true),auditLogs:useTable<AuditRow>('audit_logs','created_at',500,true),bankConnections:useTable<Connection>('bank_connections','created_at',300)
+}}
+export type TransactionFilters={from?:string;to?:string;accountId?:string;min?:number;max?:number;direction?:string;status?:string;search?:string;page:number;pageSize:number}
+export function useTransactionsPage(filters:TransactionFilters){const[data,setData]=useState<Tx[]>([]),[count,setCount]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState<string|null>(null)
+  const refetch=useCallback(async()=>{if(!supabaseClient){setError('Supabase yapılandırılmamış');setLoading(false);return}setLoading(true);let q=supabaseClient.from('transactions').select('*',{count:'exact'}).order('occurred_at',{ascending:false});if(filters.from)q=q.gte('occurred_at',`${filters.from}T00:00:00`);if(filters.to)q=q.lte('occurred_at',`${filters.to}T23:59:59.999`);if(filters.accountId)q=q.eq('account_id',filters.accountId);if(filters.min!=null)q=q.gte('amount',filters.min);if(filters.max!=null)q=q.lte('amount',filters.max);if(filters.direction)q=q.eq('direction',filters.direction);if(filters.status)q=q.eq('status',filters.status);if(filters.search)q=q.ilike('counterparty',`%${filters.search.replaceAll('%','')}%`);const from=filters.page*filters.pageSize;const r=await q.range(from,from+filters.pageSize-1);setData((r.data||[]) as Tx[]);setCount(r.count||0);setError(r.error?.message||null);setLoading(false)},[filters.from,filters.to,filters.accountId,filters.min,filters.max,filters.direction,filters.status,filters.search,filters.page,filters.pageSize]);useEffect(()=>{void refetch();if(!supabaseClient)return;const c=supabaseClient.channel('transactions-page-live').on('postgres_changes',{event:'INSERT',schema:'public',table:'transactions'},()=>void refetch()).subscribe();return()=>{if(supabaseClient)void supabaseClient.removeChannel(c)}},[refetch]);return{data,count,loading,error,refetch}}
