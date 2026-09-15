@@ -1,33 +1,40 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import type { CookieData, Page } from 'puppeteer';
-import type { AccountSnapshot, BankScraper, ResolvedBankConfig } from './types.js';
+import type { Page } from 'puppeteer';
+import { saveSession, loadSession, deleteSession, StoredSession } from '../persistence/sessionStore.js';
 
-export abstract class BaseScraper implements BankScraper {
-  constructor(protected readonly config: ResolvedBankConfig) {}
+export abstract class BaseScraper {
+  protected config: any;
+  protected connectionId: string;
+
+  constructor(config: any, connectionId: string) {
+    this.config = config;
+    this.connectionId = connectionId;
+  }
+
+  async saveCookies(page: Page): Promise<void> {
+    const cookies = await page.cookies();
+    const userAgent = await page.evaluate(() => navigator.userAgent);
+    const session: StoredSession = {
+      cookies,
+      userAgent,
+      savedAt: new Date().toISOString()
+    };
+    await saveSession(this.connectionId, session);
+    console.log(`🍪 Çerezler Supabase'e kaydedildi. connectionId=${this.connectionId}`);
+  }
+
+  async loadCookies(page: Page): Promise<boolean> {
+    const session = await loadSession(this.connectionId);
+    if (!session) return false;
+    await page.setCookie(...session.cookies);
+    await page.setUserAgent(session.userAgent);
+    console.log(`🍪 Çerezler Supabase'den yüklendi.`);
+    return true;
+  }
+
+  async clearCookies(): Promise<void> {
+    await deleteSession(this.connectionId);
+  }
 
   abstract loginAndGetSession(page: Page): Promise<Page>;
-  abstract scrapeAccountSnapshot(page: Page): Promise<AccountSnapshot>;
-
-  protected async restoreCookies(page: Page): Promise<boolean> {
-    try {
-      const cookies = JSON.parse(await fs.readFile(this.config.cookieFile, 'utf8')) as CookieData[];
-      if (!cookies.length) return false;
-      await page.setCookie(...cookies);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  protected async saveCookies(page: Page): Promise<void> {
-    await fs.mkdir(path.dirname(this.config.cookieFile), { recursive: true });
-    const cookies = await page.cookies();
-    await fs.writeFile(this.config.cookieFile, JSON.stringify(cookies, null, 2), 'utf8');
-  }
-
-  async openStartPage(page: Page): Promise<void> {
-    await this.restoreCookies(page);
-    await page.goto(this.config.startUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-  }
+  abstract scrapeAccountSnapshot(page: Page): Promise<any>;
 }
