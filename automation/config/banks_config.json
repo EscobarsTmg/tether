@@ -1,6 +1,16 @@
 {
   "banks": [
     {
+      "id": "garanti-main",
+      "enabled": false,
+      "scraper": "garanti",
+      "bankName": "Garanti BBVA",
+      "providerId": "tr:garanti",
+      "startUrl": "https://sube.garantibbva.com.tr/isube/login/login/passwordentrypersonal-tr",
+      "usernameEnv": "GARANTI_USERNAME",
+      "passwordEnv": "GARANTI_PASSWORD"
+    },
+    {
       "id": "bankA-main",
       "enabled": false,
       "scraper": "bankA",
