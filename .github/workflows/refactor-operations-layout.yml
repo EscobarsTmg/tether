@@ -1,0 +1,90 @@
+name: Refactor Operations Layout
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/layouts/OperationsLayout.tsx'
+      - '.github/workflows/refactor-operations-layout.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Extract page exports from AppOpsV3
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('src/AppOpsV3.tsx')
+          s=p.read_text()
+          s=s.replace("import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'", "import { NavLink } from 'react-router-dom'")
+          start=s.index('const navGroups = [')
+          end=s.index('function SummaryStrip')
+          s=s[:start]+s[end:]
+          marker='export default function AppOpsV3()'
+          pos=s.index(marker)
+          s=s[:pos]+'''export {\n  Dashboard, BankAccounts, Transactions, Movements, AccountHistory, Reports,\n  Reconciliation, ConnectionStatus, Metrics, BankConnections, UsersPage,\n  UserGroups, Audit, Callbacks, SettingsPage,\n}\n\nexport default Dashboard\n'''
+          p.write_text(s)
+          PY
+      - name: Write nested router
+        run: |
+          cat > src/router.tsx <<'EOF'
+          import { Navigate, Route, Routes } from 'react-router-dom'
+          import OperationsLayout from './layouts/OperationsLayout'
+          import {
+            Dashboard, BankAccounts, Transactions, Movements, AccountHistory, Reports,
+            Reconciliation, ConnectionStatus, Metrics, BankConnections, UsersPage,
+            UserGroups, Audit, Callbacks, SettingsPage,
+          } from './AppOpsV3'
+          import SecurityCenterPage from './pages/SecurityCenterPage'
+          import MultiAccountSandboxPage from './pages/MultiAccountSandboxPage'
+          import AutomationCenterPage from './pages/AutomationCenterPage'
+
+          export default function AppRouter(){
+            return <Routes>
+              <Route element={<OperationsLayout/>}>
+                <Route path="/" element={<Dashboard/>}/>
+                <Route path="/bank-accounts" element={<BankAccounts/>}/>
+                <Route path="/transactions" element={<Transactions/>}/>
+                <Route path="/account-movements" element={<Movements/>}/>
+                <Route path="/account-history" element={<AccountHistory/>}/>
+                <Route path="/reports" element={<Reports/>}/>
+                <Route path="/reconciliation" element={<Reconciliation/>}/>
+                <Route path="/connection-status" element={<ConnectionStatus/>}/>
+                <Route path="/metrics" element={<Metrics/>}/>
+                <Route path="/bank-connections" element={<BankConnections/>}/>
+                <Route path="/users" element={<UsersPage/>}/>
+                <Route path="/user-groups" element={<UserGroups/>}/>
+                <Route path="/audit-log" element={<Audit/>}/>
+                <Route path="/callbacks" element={<Callbacks/>}/>
+                <Route path="/settings" element={<SettingsPage/>}/>
+                <Route path="/security-sessions" element={<SecurityCenterPage/>}/>
+                <Route path="/sandbox/multi-account" element={<MultiAccountSandboxPage/>}/>
+                <Route path="/automation-center" element={<AutomationCenterPage/>}/>
+                <Route path="*" element={<Navigate to="/" replace/>}/>
+              </Route>
+            </Routes>
+          }
+          EOF
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Commit refactor
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/AppOpsV3.tsx src/router.tsx
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "refactor: extract OperationsLayout"
+          git push
