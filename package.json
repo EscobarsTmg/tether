@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:checked": "tsc -b && vite build",
     "preview": "vite preview",
-    "automation:scrape": "node automation/scraper.js",
+    "automation:scrape": "tsx automation/runner.ts",
     "automation:rules": "tsx automation/rule-engine.ts"
   },
   "dependencies": {
