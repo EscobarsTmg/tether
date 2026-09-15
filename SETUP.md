@@ -32,17 +32,57 @@ GITHUB_AUTOMATION_REPO=EscobarsTmg/tether
 
 Secret değerini frontend `VITE_*` değişkenlerine koymayın. Token yalnızca `automation-dispatch` Edge Function içinde `Deno.env.get('GITHUB_AUTOMATION_TOKEN')` ile okunur.
 
-Secret eklendikten sonra `/automation-center` sayfasındaki **Sistem Durumu → Test Et** butonunu kullanın. Başarılı durumda kart `GitHub Actions hazır` göstermelidir.
+## 3. automation-dispatch Edge Function deploy
 
-## 3. automation-dispatch davranışı
+Bu repo içinden Supabase CLI kullanarak deploy edin. Önce kurulu CLI sürümünüzde komutları doğrulamak için:
 
-Frontend Edge Function'a iki tür istek gönderir:
+```bash
+supabase --help
+supabase functions deploy --help
+```
+
+Ardından:
+
+```bash
+supabase login
+supabase projects list
+supabase link --project-ref <SUPABASE_PROJECT_REF>
+supabase functions deploy automation-dispatch
+```
+
+CLI proje bağımlılığı olarak kuruluysa aynı komutları `npx supabase ...` biçiminde çalıştırın.
+
+Bu projede bağlı management connector üzerinden deploy girişimi yetki hatası verdiği için CLI yolu kullanılmalıdır. CLI, sizin Supabase hesabınızla oturum açar ve proje üzerinde sahip olduğunuz gerçek yetkilerle deploy işlemini gerçekleştirir. Yetkiniz yoksa CLI da deploy yapamaz; bu durumda proje sahibinin Edge Functions deploy yetkisi vermesi gerekir.
+
+Deploy sonrasında kontrol:
+
+```bash
+supabase functions list
+```
+
+`automation-dispatch` listede görünmelidir. `/automation-center` sayfasında **Sistem Durumu → Test Et** butonuna basın. Fonksiyon bulunamazsa panel `Edge Function deploy edilmemiş, lütfen CLI ile deploy edin` uyarısını gösterir.
+
+## 4. Health check davranışı
+
+Frontend şu isteği gönderir:
 
 ```json
 { "action": "health" }
 ```
 
-Bu istek secret değerini istemciye döndürmez. Yalnızca token'ın yapılandırılmış olup olmadığını bildirir.
+Fonksiyon secret değerini açığa çıkarmadan aşağıdaki kontrolleri yapar:
+
+```json
+{
+  "github_token": true,
+  "github_api": true,
+  "workflow_exists": true
+}
+```
+
+- `github_token`: `GITHUB_AUTOMATION_TOKEN` tanımlı mı?
+- `github_api`: token ile GitHub repository API çağrısı başarılı mı?
+- `workflow_exists`: `.github/workflows/automation.yml` GitHub Actions API üzerinden bulunabiliyor mu?
 
 Manuel workflow çalıştırma isteği:
 
@@ -50,13 +90,13 @@ Manuel workflow çalıştırma isteği:
 { "action": "dispatch" }
 ```
 
-Edge Function GitHub REST API üzerinde `POST /repos/EscobarsTmg/tether/actions/workflows/automation.yml/dispatches` çağrısını `ref: main` ile yapar. Başarılı cevap:
+Başarılı cevap:
 
 ```json
 { "success": true, "message": "Workflow tetiklendi" }
 ```
 
-## 4. Supabase Leaked Password Protection
+## 5. Supabase Leaked Password Protection
 
 Hosted Supabase projesinde Dashboard'u açın.
 
@@ -66,17 +106,22 @@ Hosted Supabase projesinde Dashboard'u açın.
 4. Password strength gereksinimlerini projenizin politikasına göre yapılandırın.
 5. Ayarları kaydedin.
 
-Bu özellik sızdırılmış parola veritabanlarında bulunan şifrelerin kullanılmasını engeller. Frontend `weak_password` ve `leaked_password` türündeki Auth hatalarını Türkçe kullanıcı mesajına dönüştürür.
+Frontend `weak_password` ve `leaked_password` türündeki Auth hatalarını Türkçe kullanıcı mesajına dönüştürür.
 
-## 5. Test
+## 6. CI doğrulama
 
-Kurulumdan sonra:
+`.github/workflows/automation.yml` hem `main` push olaylarında hem manuel `workflow_dispatch` ile çalışır. Job sırası:
 
-1. `/automation-center` sayfasını açın.
-2. Sistem Durumu kartında token kontrolünün başarılı olduğunu doğrulayın.
-3. **Scraper'ı Şimdi Çalıştır** butonuna basın.
-4. GitHub Actions altında `Bank Automation Skeleton` workflow run'ının oluştuğunu doğrulayın.
-5. Test kullanıcısı oluştururken zayıf/sızdırılmış parola kontrolünün beklendiği gibi hata verdiğini doğrulayın.
+```text
+checkout
+→ Node 20
+→ npm install --no-audit --no-fund
+→ npm run build --if-present
+→ automation:scrape
+→ automation:rules
+```
+
+GitHub Actions ekranında `Bank Automation Skeleton` workflow'unun son run sonucunu kontrol edin. `build` script'i mevcutsa build çalışır; yoksa `--if-present` nedeniyle adım hata üretmez.
 
 ## Güvenlik notları
 
