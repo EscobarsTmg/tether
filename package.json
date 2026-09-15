@@ -10,8 +10,8 @@
     "build": "vite build",
     "build:checked": "tsc -b && vite build",
     "preview": "vite preview",
-    "automation:scrape": "tsx automation/runner.ts",
-    "automation:server": "tsx automation/server.ts",
+    "automation:scrape": "tsx --env-file=.env automation/runner.ts",
+    "automation:server": "tsx --env-file=.env automation/server.ts",
     "automation:rules": "tsx automation/rule-engine.ts"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "@types/papaparse": "^5.5.2",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
