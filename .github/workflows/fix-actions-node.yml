@@ -1,0 +1,30 @@
+name: Fix Actions Node
+on:
+  push:
+    paths: ['.github/workflows/fix-actions-node.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v5
+        with: { node-version: '22' }
+      - name: Upgrade workflow actions and Node
+        run: |
+          git show 62f26af^:.github/workflows/split-appops-pages.yml > .github/workflows/split-appops-pages.yml
+          sed -i 's#actions/checkout@v4#actions/checkout@v5#g; s#actions/setup-node@v4#actions/setup-node@v5#g; s/node-version: '\''20'\''/node-version: '\''22'\''/g; s/node-version: 20/node-version: 22/g' .github/workflows/*.yml
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Commit verified fixes
+        run: |
+          git rm .github/workflows/fix-actions-node.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git commit -m 'fix: recharts tooltip formatter types and actions node version'
+          git push
