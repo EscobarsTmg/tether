@@ -9,6 +9,7 @@ on:
       - 'src/pages/ReconciliationPage.tsx'
       - 'src/hooks/useOpsData.ts'
       - 'package.json'
+      - '.github/workflows/verify-live-pages.yml'
 jobs:
   verify:
     runs-on: ubuntu-latest
