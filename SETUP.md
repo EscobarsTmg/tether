@@ -30,98 +30,55 @@ Opsiyonel repository override:
 GITHUB_AUTOMATION_REPO=EscobarsTmg/tether
 ```
 
-Secret değerini frontend `VITE_*` değişkenlerine koymayın. Token yalnızca `automation-dispatch` Edge Function içinde `Deno.env.get('GITHUB_AUTOMATION_TOKEN')` ile okunur.
+Secret değerini frontend `VITE_*` değişkenlerine koymayın.
 
-## 3. automation-dispatch Edge Function deploy
+## 3. Edge Function deploy
 
-Bu repo içinden Supabase CLI kullanarak deploy edin. Önce kurulu CLI sürümünüzde komutları doğrulamak için:
+CLI komutlarını önce kurulu sürümde doğrulayın:
 
 ```bash
 supabase --help
 supabase functions deploy --help
 ```
 
-Ardından:
+Ardından projeyi linkleyip gereken fonksiyonları deploy edin:
 
 ```bash
 supabase login
 supabase projects list
 supabase link --project-ref <SUPABASE_PROJECT_REF>
 supabase functions deploy automation-dispatch
+supabase functions deploy bank-sync
+supabase functions deploy invite-user
 ```
 
-CLI proje bağımlılığı olarak kuruluysa aynı komutları `npx supabase ...` biçiminde çalıştırın.
+**CORS kodunda yapılan her değişiklikten sonra ilgili Edge Function yeniden deploy edilmelidir:**
 
-Bu projede bağlı management connector üzerinden deploy girişimi yetki hatası verdiği için CLI yolu kullanılmalıdır. CLI, sizin Supabase hesabınızla oturum açar ve proje üzerinde sahip olduğunuz gerçek yetkilerle deploy işlemini gerçekleştirir. Yetkiniz yoksa CLI da deploy yapamaz; bu durumda proje sahibinin Edge Functions deploy yetkisi vermesi gerekir.
+```bash
+supabase functions deploy <fonksiyon-adi>
+```
 
-Deploy sonrasında kontrol:
+Deploy sonrasında:
 
 ```bash
 supabase functions list
 ```
 
-`automation-dispatch` listede görünmelidir. `/automation-center` sayfasında **Sistem Durumu → Test Et** butonuna basın. Fonksiyon bulunamazsa panel `Edge Function deploy edilmemiş, lütfen CLI ile deploy edin` uyarısını gösterir.
+## 4. CORS davranışı
 
-## 4. Health check davranışı
+Browser'dan çağrılan Edge Function'lar `OPTIONS` preflight isteğini karşılar ve JSON başarı/hata cevaplarının tamamına CORS header'larını ekler. Geliştirme ortamında dinamik preview URL'leri nedeniyle `Access-Control-Allow-Origin: *` kullanılır. Sabit production domainine geçildiğinde origin değerini yalnızca production domainiyle sınırlandırın.
 
-Frontend şu isteği gönderir:
+## 5. Health check davranışı
 
-```json
-{ "action": "health" }
-```
+Frontend `automation-dispatch` fonksiyonuna `{ "action": "health" }` gönderir. Fonksiyon secret değerlerini açığa çıkarmadan GitHub token, API ve workflow erişimini kontrol eder.
 
-Fonksiyon secret değerini açığa çıkarmadan aşağıdaki kontrolleri yapar:
+## 6. Supabase Leaked Password Protection
 
-```json
-{
-  "github_token": true,
-  "github_api": true,
-  "workflow_exists": true
-}
-```
+Hosted Supabase projesinde Dashboard'u açın, Authentication güvenlik ayarlarından **Leaked Password Protection** seçeneğini etkinleştirin ve uygun password strength politikasını yapılandırın.
 
-- `github_token`: `GITHUB_AUTOMATION_TOKEN` tanımlı mı?
-- `github_api`: token ile GitHub repository API çağrısı başarılı mı?
-- `workflow_exists`: `.github/workflows/automation.yml` GitHub Actions API üzerinden bulunabiliyor mu?
+## 7. CI doğrulama
 
-Manuel workflow çalıştırma isteği:
-
-```json
-{ "action": "dispatch" }
-```
-
-Başarılı cevap:
-
-```json
-{ "success": true, "message": "Workflow tetiklendi" }
-```
-
-## 5. Supabase Leaked Password Protection
-
-Hosted Supabase projesinde Dashboard'u açın.
-
-1. **Authentication** bölümüne gidin.
-2. Auth güvenlik / attack protection / password security ayarlarını açın.
-3. **Leaked Password Protection** seçeneğini etkinleştirin.
-4. Password strength gereksinimlerini projenizin politikasına göre yapılandırın.
-5. Ayarları kaydedin.
-
-Frontend `weak_password` ve `leaked_password` türündeki Auth hatalarını Türkçe kullanıcı mesajına dönüştürür.
-
-## 6. CI doğrulama
-
-`.github/workflows/automation.yml` hem `main` push olaylarında hem manuel `workflow_dispatch` ile çalışır. Job sırası:
-
-```text
-checkout
-→ Node 20
-→ npm install --no-audit --no-fund
-→ npm run build --if-present
-→ automation:scrape
-→ automation:rules
-```
-
-GitHub Actions ekranında `Bank Automation Skeleton` workflow'unun son run sonucunu kontrol edin. `build` script'i mevcutsa build çalışır; yoksa `--if-present` nedeniyle adım hata üretmez.
+CI üzerinde dependency install, TypeScript typecheck ve production build adımlarının başarılı olduğunu doğrulayın.
 
 ## Güvenlik notları
 
