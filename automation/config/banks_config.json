@@ -6,9 +6,7 @@
       "scraper": "garanti",
       "bankName": "Garanti BBVA",
       "providerId": "tr:garanti",
-      "startUrl": "https://sube.garantibbva.com.tr/isube/login/login/passwordentrypersonal-tr",
-      "usernameEnv": "GARANTI_USERNAME",
-      "passwordEnv": "GARANTI_PASSWORD"
+      "startUrl": "https://sube.garantibbva.com.tr/isube/login/login/passwordentrypersonal-tr"
     },
     {
       "id": "bankA-main",
@@ -16,9 +14,7 @@
       "scraper": "bankA",
       "bankName": "Bank A",
       "providerId": "bank-a-provider",
-      "startUrl": "https://example.invalid/login",
-      "usernameEnv": "BANK_A_USERNAME",
-      "passwordEnv": "BANK_A_PASSWORD"
+      "startUrl": "https://example.invalid/login"
     },
     {
       "id": "bankB-main",
@@ -26,9 +22,7 @@
       "scraper": "bankB",
       "bankName": "Bank B",
       "providerId": "bank-b-provider",
-      "startUrl": "https://example.invalid/login",
-      "usernameEnv": "BANK_B_USERNAME",
-      "passwordEnv": "BANK_B_PASSWORD"
+      "startUrl": "https://example.invalid/login"
     }
   ]
 }
