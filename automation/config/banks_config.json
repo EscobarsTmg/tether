@@ -1,0 +1,24 @@
+{
+  "banks": [
+    {
+      "id": "bankA-main",
+      "enabled": false,
+      "scraper": "bankA",
+      "bankName": "Bank A",
+      "providerId": "bank-a-provider",
+      "startUrl": "https://example.invalid/login",
+      "usernameEnv": "BANK_A_USERNAME",
+      "passwordEnv": "BANK_A_PASSWORD"
+    },
+    {
+      "id": "bankB-main",
+      "enabled": false,
+      "scraper": "bankB",
+      "bankName": "Bank B",
+      "providerId": "bank-b-provider",
+      "startUrl": "https://example.invalid/login",
+      "usernameEnv": "BANK_B_USERNAME",
+      "passwordEnv": "BANK_B_PASSWORD"
+    }
+  ]
+}
