@@ -1,0 +1,33 @@
+name: Verify Live Pages
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/pages/AccountMovementsPage.tsx'
+      - 'src/pages/AccountHistoryPage.tsx'
+      - 'src/pages/ReportsPage.tsx'
+      - 'src/pages/ReconciliationPage.tsx'
+      - 'src/hooks/useOpsData.ts'
+      - 'package.json'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Commit lockfile
+        run: |
+          if ! git diff --quiet package-lock.json; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add package-lock.json
+            git commit -m 'feat: movements, history, reports, reconciliation pages with live data'
+            git push
+          fi
