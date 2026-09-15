@@ -10,9 +10,9 @@ jobs:
   split:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with: { node-version: 22 }
       - name: Split pages
         run: |
@@ -30,56 +30,11 @@ jobs:
           body=common+'\n'.join(fn(x) for x in helpers)+"\n\nexport { cls, money, dt, dateOnly, Badge, PageState, Empty, Stat, copyText, SummaryStrip, TransactionTable }\n"
           Path('src/components/ui/OperationsUi.tsx').write_text(body)
           pre="""import { FormEvent, useMemo, useState } from 'react'\nimport { NavLink } from 'react-router-dom'\nimport { Activity, BarChart3, Building2, ChevronRight, CircleDollarSign, Clock3, DatabaseZap, FileClock, FileText, Gauge, History, Link2, ListChecks, RefreshCw, Search, Settings, ShieldCheck, SlidersHorizontal, Users, WalletCards, Webhook, X, Plus, Download, Landmark, CircleAlert, CheckCircle2, PauseCircle, ArrowDownToLine, ArrowUpFromLine, Copy, Boxes, Filter, UserRoundCog } from 'lucide-react'\nimport { supabase } from '../lib/supabase'\nimport { bankCatalog, bankByProvider } from '../lib/bankCatalog'\nimport { useOpsData } from '../lib/opsData'\nimport { cls, money, dt, Badge, PageState, Empty, Stat, copyText, SummaryStrip, TransactionTable } from '../components/ui/OperationsUi'\n\n"""
-          pages={
-            'DashboardPage':('Dashboard',[]), 'BankAccountsPage':('BankAccounts',[]),
-            'TransactionsPage':('Transactions',[]), 'AccountMovementsPage':('Movements',[]),
-            'AccountHistoryPage':('AccountHistory',[]), 'ReportsPage':('Reports',[]),
-            'ReconciliationPage':('Reconciliation',[]), 'ConnectionStatusPage':('ConnectionStatus',[]),
-            'MetricsPage':('Metrics',[]), 'BankConnectionsPage':('BankConnections',['AddBankModal']),
-            'UsersPage':('UsersPage',[]), 'UserGroupsPage':('UserGroups',[]),
-            'AuditLogPage':('Audit',[]), 'CallbacksPage':('Callbacks',[]), 'SettingsPage':('SettingsPage',[]),
-          }
+          pages={'DashboardPage':('Dashboard',[]),'BankAccountsPage':('BankAccounts',[]),'TransactionsPage':('Transactions',[]),'AccountMovementsPage':('Movements',[]),'AccountHistoryPage':('AccountHistory',[]),'ReportsPage':('Reports',[]),'ReconciliationPage':('Reconciliation',[]),'ConnectionStatusPage':('ConnectionStatus',[]),'MetricsPage':('Metrics',[]),'BankConnectionsPage':('BankConnections',['AddBankModal']),'UsersPage':('UsersPage',[]),'UserGroupsPage':('UserGroups',[]),'AuditLogPage':('Audit',[]),'CallbacksPage':('Callbacks',[]),'SettingsPage':('SettingsPage',[])}
           for file,(old,extras) in pages.items():
               parts=[fn(x) for x in extras]+[fn(old)]
-              # Rename only the exported page function, preserving helper names/content.
               parts[-1]=parts[-1].replace('function '+old+'(', 'export default function '+file+'(',1)
               Path('src/pages/'+file+'.tsx').write_text(pre+'\n\n'.join(parts)+'\n')
-          router="""import { Navigate, Route, Routes } from 'react-router-dom'
-          import OperationsLayout from './layouts/OperationsLayout'
-          import DashboardPage from './pages/DashboardPage'
-          import BankAccountsPage from './pages/BankAccountsPage'
-          import TransactionsPage from './pages/TransactionsPage'
-          import AccountMovementsPage from './pages/AccountMovementsPage'
-          import AccountHistoryPage from './pages/AccountHistoryPage'
-          import ReportsPage from './pages/ReportsPage'
-          import ReconciliationPage from './pages/ReconciliationPage'
-          import ConnectionStatusPage from './pages/ConnectionStatusPage'
-          import MetricsPage from './pages/MetricsPage'
-          import BankConnectionsPage from './pages/BankConnectionsPage'
-          import UsersPage from './pages/UsersPage'
-          import UserGroupsPage from './pages/UserGroupsPage'
-          import AuditLogPage from './pages/AuditLogPage'
-          import CallbacksPage from './pages/CallbacksPage'
-          import SettingsPage from './pages/SettingsPage'
-          import SecurityCenterPage from './pages/SecurityCenterPage'
-          import MultiAccountSandboxPage from './pages/MultiAccountSandboxPage'
-          import AutomationCenterPage from './pages/AutomationCenterPage'
-
-          export default function AppRouter(){return <Routes><Route element={<OperationsLayout/>}>
-            <Route path="/" element={<DashboardPage/>}/><Route path="/bank-accounts" element={<BankAccountsPage/>}/>
-            <Route path="/transactions" element={<TransactionsPage/>}/><Route path="/account-movements" element={<AccountMovementsPage/>}/>
-            <Route path="/account-history" element={<AccountHistoryPage/>}/><Route path="/reports" element={<ReportsPage/>}/>
-            <Route path="/reconciliation" element={<ReconciliationPage/>}/><Route path="/connection-status" element={<ConnectionStatusPage/>}/>
-            <Route path="/metrics" element={<MetricsPage/>}/><Route path="/bank-connections" element={<BankConnectionsPage/>}/>
-            <Route path="/users" element={<UsersPage/>}/><Route path="/user-groups" element={<UserGroupsPage/>}/>
-            <Route path="/audit-log" element={<AuditLogPage/>}/><Route path="/callbacks" element={<CallbacksPage/>}/>
-            <Route path="/settings" element={<SettingsPage/>}/><Route path="/security-sessions" element={<SecurityCenterPage/>}/>
-            <Route path="/sandbox/multi-account" element={<MultiAccountSandboxPage/>}/><Route path="/automation-center" element={<AutomationCenterPage/>}/>
-            <Route path="*" element={<Navigate to="/" replace/>}/>
-          </Route></Routes>}
-          """
-          Path('src/router.tsx').write_text('\n'.join(x.strip() for x in router.splitlines())+'\n')
-          Path('src/AppOpsV3.tsx').unlink()
           PY
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -89,10 +44,3 @@ jobs:
         run: npm run build
       - name: Verify no AppOpsV3 references
         run: '! grep -r "AppOpsV3" src/'
-      - name: Commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src
-          git commit -m "refactor: split AppOpsV3 into individual page files"
-          git push
