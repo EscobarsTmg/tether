@@ -1,13 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const backendKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required');
+if (!supabaseUrl || !backendKey) {
+  throw new Error('SUPABASE_URL and a backend Supabase key are required');
 }
 
-const supabase = createClient(supabaseUrl, serviceRoleKey, {
+const supabase = createClient(supabaseUrl, backendKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
@@ -33,30 +33,40 @@ const rules: Rule[] = [
   }
 ].filter(rule => rule.accountId);
 
-async function audit(action: string, detail: string, severity = 'info') {
-  await supabase.from('audit_logs').insert({
+async function audit(action: string, detail: string, severity: 'info'|'success'|'warning'|'error' = 'info') {
+  const { error } = await supabase.from('audit_logs').insert({
     actor_label: 'automation',
     action,
     resource_type: 'rule_engine',
     detail,
     severity
   });
+  if (error) console.error('audit log failed:', error.message);
 }
 
 async function recentDuplicate(accountId: string, amount: number, destinationName: string) {
   const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('payment_requests')
     .select('id')
     .eq('account_id', accountId)
     .eq('amount', amount)
     .eq('destination_name', destinationName)
+    .in('status', ['pending_approval', 'approved'])
     .gte('created_at', since)
     .limit(1);
+  if (error) throw error;
   return Boolean(data?.length);
 }
 
 export async function runRuleEngine() {
+  if (!rules.length) {
+    await audit('rule_engine_skipped', 'No RULE_ACCOUNT_ID configured', 'warning');
+    return { processed: 0, created: 0 };
+  }
+
+  let created = 0;
+
   for (const rule of rules) {
     try {
       const { data: account, error } = await supabase
@@ -92,7 +102,7 @@ export async function runRuleEngine() {
       }
 
       if (await recentDuplicate(account.id, rule.amount, rule.destinationName)) {
-        await audit('rule_skipped', `Recent duplicate draft detected for ${account.id}`);
+        await audit('rule_skipped', `Recent duplicate request detected for ${account.id}`);
         continue;
       }
 
@@ -112,12 +122,15 @@ export async function runRuleEngine() {
         .single();
 
       if (requestError) throw requestError;
-      await audit('payment_request_created', `Created pending approval request ${request.id}`);
+      created += 1;
+      await audit('payment_request_created', `Created pending approval request ${request.id}`, 'success');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       await audit('rule_failed', message, 'error');
     }
   }
+
+  return { processed: rules.length, created };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
