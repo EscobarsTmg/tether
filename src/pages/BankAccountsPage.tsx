@@ -1,2 +1,58 @@
-import { useMemo,useState } from 'react';import Papa from 'papaparse';import { useNavigate } from 'react-router-dom';import { useOpsData } from '../hooks/useOpsData';import { money } from '../components/ui/OperationsUi'
-export default function BankAccountsPage(){const d=useOpsData(),navigate=useNavigate(),[bank,setBank]=useState(''),[currency,setCurrency]=useState(''),[status,setStatus]=useState(''),[selected,setSelected]=useState<string|null>(null);const rows=useMemo(()=>d.bankAccounts.data.filter(a=>(!bank||a.bank_name===bank)&&(!currency||a.currency===currency)&&(!status||a.status===status)),[d.bankAccounts.data,bank,currency,status]);const tx=d.transactions.data;const current=d.bankAccounts.data.find(a=>a.id===selected);if(d.bankAccounts.loading)return <div className="ops-page"><div className="ops-state">Hesaplar yükleniyor…</div></div>;if(d.bankAccounts.error)return <div className="ops-page"><div className="ops-error"><span>{d.bankAccounts.error}</span><button onClick={()=>void d.bankAccounts.refetch()}>Tekrar dene</button></div></div>;const exportCsv=()=>{const blob=new Blob([Papa.unparse(rows)],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='bank-accounts.csv';a.click();URL.revokeObjectURL(a.href)};return <div className="ops-page"><div className="ops-pageactions"><div><h2>Banka Hesapları</h2><p>Supabase üzerindeki canlı hesaplar</p></div><div><button className="ops-ghost" onClick={exportCsv}>CSV Export</button> <button className="ops-primary" onClick={()=>navigate('/bank-connections')}>Banka Bağla</button></div></div><div className="ops-filterbar"><select value={bank} onChange={e=>setBank(e.target.value)}><option value="">Tüm bankalar</option>{[...new Set(d.bankAccounts.data.map(a=>a.bank_name))].map(x=><option key={x}>{x}</option>)}</select><select value={currency} onChange={e=>setCurrency(e.target.value)}><option value="">Tüm para birimleri</option>{[...new Set(d.bankAccounts.data.map(a=>a.currency))].map(x=><option key={x}>{x}</option>)}</select><select value={status} onChange={e=>setStatus(e.target.value)}><option value="">Tüm durumlar</option>{[...new Set(d.bankAccounts.data.map(a=>a.status))].map(x=><option key={x}>{x}</option>)}</select></div>{!rows.length?<div className="ops-empty"><strong>Henüz veri yok</strong><span>Bağlı ve senkronize edilmiş banka hesabı bulunamadı.</span><button className="ops-primary" onClick={()=>navigate('/bank-connections')}>Banka bağlantılarını yönet</button></div>:<section className="ops-panel"><div className="ops-tablewrap"><table className="ops-table"><thead><tr><th>Banka</th><th>Hesap</th><th>Para Birimi</th><th>Bakiye</th><th>Son Senkron</th><th>Durum</th></tr></thead><tbody>{rows.map(a=><tr key={a.id} onClick={()=>setSelected(a.id)}><td>{a.bank_name}</td><td>•••• {a.iban_masked?.replace(/\s/g,'').slice(-4)||'—'}</td><td>{a.currency}</td><td>{money(Number(a.balance),a.currency)}</td><td>{new Date(a.updated_at).toLocaleString('tr-TR')}</td><td><span className="ops-badge">{a.status}</span></td></tr>)}</tbody></table></div></section>}{current&&<div className="ops-modalback" onMouseDown={e=>{if(e.currentTarget===e.target)setSelected(null)}}><div className="ops-modal"><div className="ops-modalhead"><h2>{current.bank_name} · {current.account_name}</h2><button onClick={()=>setSelected(null)}>×</button></div><p>{current.iban_masked} · {money(Number(current.balance),current.currency)}</p><h3>Son 20 işlem</h3><div className="ops-tablewrap"><table className="ops-table"><tbody>{tx.filter(t=>t.account_id===current.id).slice(0,20).map(t=><tr key={t.id}><td>{new Date(t.occurred_at).toLocaleString('tr-TR')}</td><td>{t.counterparty||t.method||'—'}</td><td>{money(Number(t.amount),current.currency)}</td></tr>)}</tbody></table></div></div></div>}</div>}
+import { useState } from 'react';
+
+const SCRAPER_API = import.meta.env.VITE_SCRAPER_API_URL || 'http://localhost:3001';
+
+export function BankAccountsPage() {
+  const [form, setForm] = useState({ bankId: 'tr:garanti', username: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleConnect = async () => {
+    setLoading(true);
+    setMessage('');
+    try {
+      const res = await fetch(`${SCRAPER_API}/api/connect`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bankId: form.bankId,
+          credentials: { username: form.username, password: form.password }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMessage('✅ Banka başarıyla bağlandı. Şifreniz saklanmadı.');
+      setForm({ ...form, username: '', password: '' });
+    } catch (err: any) {
+      setMessage(`❌ Hata: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h1>Banka Bağla</h1>
+      <select value={form.bankId} onChange={e => setForm({ ...form, bankId: e.target.value })}>
+        <option value="tr:garanti">Garanti BBVA</option>
+        <option value="tr:bankb">Diğer Banka</option>
+      </select>
+      <input
+        placeholder="TCKN / Kullanıcı Adı"
+        value={form.username}
+        onChange={e => setForm({ ...form, username: e.target.value })}
+      />
+      <input
+        type="password"
+        placeholder="Şifre"
+        value={form.password}
+        onChange={e => setForm({ ...form, password: e.target.value })}
+      />
+      <button onClick={handleConnect} disabled={loading}>
+        {loading ? 'Bağlanıyor...' : 'Bağlan'}
+      </button>
+      {message && <p>{message}</p>}
+    </div>
+  );
+}

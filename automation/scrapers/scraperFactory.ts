@@ -1,13 +1,17 @@
-import type { BankScraper, ResolvedBankConfig } from './types.js';
-import { BankAScraper } from './BankAScraper.js';
-import { BankBScraper } from './BankBScraper.js';
 import { GarantiScraper } from './GarantiScraper.js';
+import { BankBScraper } from './BankBScraper.js';
+import banksConfig from '../config/banks_config.json' assert { type: 'json' };
 
-export function createScraper(config: ResolvedBankConfig): BankScraper {
-  switch (config.scraper) {
-    case 'bankA': return new BankAScraper(config);
-    case 'bankB': return new BankBScraper(config);
-    case 'garanti': return new GarantiScraper(config);
-    default: throw new Error(`Unknown scraper adapter: ${config.scraper}`);
+export function scraperFactory(bankId: string, connectionId: string, credentials: any) {
+  const config = (banksConfig as any).banks.find((b: any) => b.id === bankId);
+  if (!config) throw new Error(`Bilinmeyen banka: ${bankId}`);
+
+  switch (bankId) {
+    case 'tr:garanti':
+      return new GarantiScraper({ ...config, ...credentials }, connectionId);
+    case 'tr:bankb':
+      return new BankBScraper({ ...config, ...credentials }, connectionId);
+    default:
+      throw new Error(`Adapter bulunamadı: ${bankId}`);
   }
 }
