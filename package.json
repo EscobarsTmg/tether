@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "automation:scrape": "tsx --env-file=.env automation/runner.ts",
     "automation:server": "tsx --env-file=.env automation/server.ts",
-    "automation:rules": "tsx automation/rule-engine.ts"
+    "automation:rules": "tsx automation/rule-engine.ts",
+    "sports:sync": "tsx --env-file=.env automation/sports/runner.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
