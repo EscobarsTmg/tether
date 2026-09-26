@@ -49,3 +49,46 @@ To run a configured provider sync:
 ```bash
 npm run sports:sync
 ```
+
+
+## Automatic full catalog discovery
+
+The provider adapter is not limited to a hard-coded sport list. It discovers sports from the provider payload and creates the internal catalog automatically.
+
+Large feeds can be paginated with:
+
+- `SPORTS_PROVIDER_PAGE_SIZE`
+- `SPORTS_PROVIDER_MAX_PAGES`
+- `SPORTS_PROVIDER_CURSOR_PARAM`
+- `SPORTS_PROVIDER_PAGE_PARAM`
+- `SPORTS_PROVIDER_PAGE_SIZE_PARAM`
+- `SPORTS_INGEST_BATCH_SIZE`
+
+Sync order is dependency-safe:
+
+1. sports catalog
+2. leagues and teams
+3. fixtures
+4. fixture events
+5. final full-sync checkpoint
+
+Provider references that cannot be mapped are stored in `sports_unmapped_entities` and shown in Sports Admin instead of being silently discarded.
+
+The normalized provider response may include:
+
+```json
+{
+  "sports": [{"key":"football","name":"Football"}],
+  "leagues": [],
+  "teams": [],
+  "fixtures": [],
+  "events": [],
+  "pagination": {
+    "page": 1,
+    "nextCursor": "next-token",
+    "hasMore": true
+  }
+}
+```
+
+The provider-specific connector only needs to transform its response into this normalized structure.
