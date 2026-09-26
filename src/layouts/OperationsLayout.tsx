@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Activity, BarChart3, Bell, ChevronDown, CircleDollarSign, FileText, Gauge, History,
   LayoutDashboard, Link2, ListChecks, LogOut, Menu, Settings, ShieldCheck, Users,
-  WalletCards, Webhook, X, CheckCircle2, UserRoundCog, Bot, LockKeyhole,
+  WalletCards, Webhook, X, CheckCircle2, UserRoundCog, Bot, LockKeyhole, Trophy, Radio, Database, SlidersHorizontal,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -22,7 +22,7 @@ export const navGroups:NavGroup[]=[
     {label:'Connection Status',path:'/connection-status',icon:Gauge},
     {label:'Metrics',path:'/metrics',icon:BarChart3},
   ]},
-  {label:'ADMINISTRATION',items:[
+  {label:'SPORTS DATA',items:[\n    {label:'Sports Dashboard',path:'/sports',icon:Trophy},\n    {label:'Live Fixtures',path:'/sports/fixtures',icon:Radio},\n    {label:'Providers & Sync',path:'/sports/providers',icon:Database},\n    {label:'Sports Admin',path:'/sports/admin',icon:SlidersHorizontal},\n  ]},\n  {label:'ADMINISTRATION',items:[
     {label:'Bank Connections',path:'/bank-connections',icon:Link2},
     {label:'Users',path:'/users',icon:Users},
     {label:'User Groups',path:'/user-groups',icon:UserRoundCog},
