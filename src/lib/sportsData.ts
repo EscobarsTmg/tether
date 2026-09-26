@@ -2,45 +2,57 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 
 export type SportsProvider={id:string;provider_key:string;name:string;mode:string;base_url:string|null;active:boolean;last_sync_at:string|null;metadata:Record<string,unknown>;created_at:string;updated_at:string}
-export type SportsLeague={id:string;sport:string;name:string;slug:string;country:string|null;logo_url:string|null;active:boolean}
-export type SportsTeam={id:string;sport:string;name:string;slug:string;country:string|null;logo_url:string|null;active:boolean}
-export type SportsFixture={id:string;provider_id:string|null;external_id:string|null;sport:string;league_id:string|null;home_team_id:string|null;away_team_id:string|null;starts_at:string;status:string;minute:number|null;home_score:number;away_score:number;venue:string|null;last_provider_update_at:string|null;metadata:Record<string,unknown>;updated_at:string}
+export type SportsCatalog={id:string;sport_key:string;name:string;category:string;active:boolean;sort_order:number;metadata:Record<string,unknown>;created_at:string;updated_at:string}
+export type SportsLeague={id:string;sport:string;sport_id?:string|null;name:string;slug:string;country:string|null;logo_url:string|null;active:boolean}
+export type SportsTeam={id:string;sport:string;sport_id?:string|null;name:string;slug:string;country:string|null;logo_url:string|null;active:boolean}
+export type SportsFixture={id:string;provider_id:string|null;external_id:string|null;sport:string;sport_id?:string|null;league_id:string|null;home_team_id:string|null;away_team_id:string|null;starts_at:string;status:string;minute:number|null;home_score:number;away_score:number;venue:string|null;last_provider_update_at:string|null;metadata:Record<string,unknown>;updated_at:string}
 export type SportsEvent={id:string;fixture_id:string;provider_event_id:string|null;event_type:string;minute:number|null;team_id:string|null;participant_name:string|null;detail:string|null;occurred_at:string|null;created_at:string}
 export type SportsSyncRun={id:string;provider_id:string|null;trigger_type:string;status:string;items_received:number;items_upserted:number;error_message:string|null;summary:Record<string,unknown>;started_at:string;completed_at:string|null}
 export type SportsMapping={id:string;provider_id:string;entity_type:string;external_id:string;internal_id:string;external_name:string|null;match_method:string;confidence:number|null;verified:boolean;updated_at:string}
+export type SportsUnmapped={id:string;provider_id:string;entity_type:string;external_id:string;external_name:string|null;reason:string;payload:Record<string,unknown>;status:string;resolved_internal_id:string|null;created_at:string;resolved_at:string|null}
+export type SportsSyncState={provider_id:string;cursor:string|null;page_number:number;checkpoint:Record<string,unknown>;last_incremental_sync_at:string|null;last_full_sync_at:string|null;updated_at:string}
 
 export function useSportsData(){
   const[providers,setProviders]=useState<SportsProvider[]>([])
+  const[sports,setSports]=useState<SportsCatalog[]>([])
   const[leagues,setLeagues]=useState<SportsLeague[]>([])
   const[teams,setTeams]=useState<SportsTeam[]>([])
   const[fixtures,setFixtures]=useState<SportsFixture[]>([])
   const[events,setEvents]=useState<SportsEvent[]>([])
   const[syncRuns,setSyncRuns]=useState<SportsSyncRun[]>([])
   const[mappings,setMappings]=useState<SportsMapping[]>([])
+  const[unmapped,setUnmapped]=useState<SportsUnmapped[]>([])
+  const[syncState,setSyncState]=useState<SportsSyncState[]>([])
   const[loading,setLoading]=useState(true)
   const[error,setError]=useState<string|null>(null)
 
   const load=useCallback(async()=>{
     if(!supabase){setError('Supabase is not configured');setLoading(false);return}
     setLoading(true);setError(null)
-    const [p,l,t,f,e,s,m]=await Promise.all([
+    const [p,sp,l,t,f,e,s,m,u,ss]=await Promise.all([
       supabase.from('sports_providers').select('*').order('name'),
+      supabase.from('sports_catalog').select('*').order('sort_order').order('name'),
       supabase.from('sports_leagues').select('*').order('name'),
       supabase.from('sports_teams').select('*').order('name'),
-      supabase.from('sports_fixtures').select('*').order('starts_at',{ascending:true}).limit(1000),
-      supabase.from('sports_fixture_events').select('*').order('created_at',{ascending:false}).limit(500),
-      supabase.from('sports_sync_runs').select('*').order('started_at',{ascending:false}).limit(100),
-      supabase.from('sports_provider_mappings').select('*').order('updated_at',{ascending:false}).limit(500),
+      supabase.from('sports_fixtures').select('*').order('starts_at',{ascending:true}).limit(5000),
+      supabase.from('sports_fixture_events').select('*').order('created_at',{ascending:false}).limit(1000),
+      supabase.from('sports_sync_runs').select('*').order('started_at',{ascending:false}).limit(200),
+      supabase.from('sports_provider_mappings').select('*').order('updated_at',{ascending:false}).limit(5000),
+      supabase.from('sports_unmapped_entities').select('*').order('created_at',{ascending:false}).limit(1000),
+      supabase.from('sports_sync_state').select('*').order('updated_at',{ascending:false}),
     ])
-    const failures=[p,l,t,f,e,s].filter(x=>x.error).map(x=>x.error!.message)
+    const failures=[p,sp,l,t,f,e,s].filter(x=>x.error).map(x=>x.error!.message)
     if(failures.length)setError(failures[0])
     setProviders((p.data||[]) as SportsProvider[])
+    setSports((sp.data||[]) as SportsCatalog[])
     setLeagues((l.data||[]) as SportsLeague[])
     setTeams((t.data||[]) as SportsTeam[])
     setFixtures((f.data||[]) as SportsFixture[])
     setEvents((e.data||[]) as SportsEvent[])
     setSyncRuns((s.data||[]) as SportsSyncRun[])
     setMappings((m.data||[]) as SportsMapping[])
+    setUnmapped((u.data||[]) as SportsUnmapped[])
+    setSyncState((ss.data||[]) as SportsSyncState[])
     setLoading(false)
   },[])
 
@@ -57,7 +69,8 @@ export function useSportsData(){
   const leagueById=useMemo(()=>new Map(leagues.map(x=>[x.id,x])),[leagues])
   const teamById=useMemo(()=>new Map(teams.map(x=>[x.id,x])),[teams])
   const providerById=useMemo(()=>new Map(providers.map(x=>[x.id,x])),[providers])
-  return{providers,leagues,teams,fixtures,events,syncRuns,mappings,leagueById,teamById,providerById,loading,error,reload:load}
+  const sportById=useMemo(()=>new Map(sports.map(x=>[x.id,x])),[sports])
+  return{providers,sports,leagues,teams,fixtures,events,syncRuns,mappings,unmapped,syncState,leagueById,teamById,providerById,sportById,loading,error,reload:load}
 }
 
 export async function ingestSportsPayload(payload:Record<string,unknown>){
@@ -70,6 +83,13 @@ export async function ingestSportsPayload(payload:Record<string,unknown>){
 export async function overrideSportsFixture(fixtureId:string,changes:Record<string,unknown>,reason?:string){
   if(!supabase)throw new Error('Supabase is not configured')
   const {data,error}=await supabase.functions.invoke('sports-clone-sync',{body:{action:'override_fixture',fixtureId,changes,reason}})
+  if(error)throw error
+  return data
+}
+
+export async function resolveSportsUnmapped(unmappedId:string,internalId:string){
+  if(!supabase)throw new Error('Supabase is not configured')
+  const {data,error}=await supabase.functions.invoke('sports-clone-sync',{body:{action:'resolve_unmapped',unmappedId,internalId}})
   if(error)throw error
   return data
 }
