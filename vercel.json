@@ -1,0 +1,9 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build:checked",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/sports/:path*", "destination": "/index.html" },
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+  ]
+}
