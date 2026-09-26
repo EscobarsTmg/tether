@@ -13,6 +13,7 @@ const maxPages = Number(process.env.SPORTS_PROVIDER_MAX_PAGES || 200)
 const cursorParam = process.env.SPORTS_PROVIDER_CURSOR_PARAM || 'cursor'
 const pageParam = process.env.SPORTS_PROVIDER_PAGE_PARAM || 'page'
 const pageSizeParam = process.env.SPORTS_PROVIDER_PAGE_SIZE_PARAM || 'limit'
+const batchSize = Number(process.env.SPORTS_INGEST_BATCH_SIZE || 500)
 
 if (!url || !key || !endpoint) throw new Error('SUPABASE_URL, SUPABASE_USER_JWT and SPORTS_PROVIDER_URL are required')
 
@@ -23,15 +24,9 @@ const adapter = new HttpJsonSportsAdapter(
   providerToken ? { authorization: 'Bearer ' + providerToken } : {},
   { pageSize,maxPages,cursorParam,pageParam,pageSizeParam },
 )
+
 const envelope = await adapter.fetchAll(maxPages)
 const supabase = createClient(url, key, { auth:{ persistSession:false, autoRefreshToken:false } })
-
-const sports = envelope.sports || []
-const leagues = envelope.leagues || []
-const teams = envelope.teams || []
-const fixtures = envelope.fixtures || []
-const events = envelope.events || []
-const batchSize = Number(process.env.SPORTS_INGEST_BATCH_SIZE || 500)
 
 const chunks = <T>(rows:T[]) => {
   const out:T[][]=[]
@@ -39,27 +34,48 @@ const chunks = <T>(rows:T[]) => {
   return out
 }
 
-const leagueChunks=chunks(leagues)
-const teamChunks=chunks(teams)
-const fixtureChunks=chunks(fixtures)
-const eventChunks=chunks(events)
-const total=Math.max(leagueChunks.length,teamChunks.length,fixtureChunks.length,eventChunks.length,1)
-
-for(let i=0;i<total;i++){
-  const { data, error } = await supabase.functions.invoke('sports-clone-sync', {
-    body:{
-      action:'ingest',
-      provider:envelope.provider,
-      sports:i===0?sports:[],
-      leagues:leagueChunks[i]||[],
-      teams:teamChunks[i]||[],
-      fixtures:fixtureChunks[i]||[],
-      events:eventChunks[i]||[],
-      triggerType:'scheduled',
-      fullSync:i===total-1,
-      checkpoint:{...(envelope.checkpoint||{}),batch:i+1,totalBatches:total},
-    },
-  })
+const invoke = async (body:Record<string,unknown>) => {
+  const { data, error } = await supabase.functions.invoke('sports-clone-sync', { body:{action:'ingest',provider:envelope.provider,triggerType:'scheduled',...body} })
   if (error) throw error
   console.log(JSON.stringify(data))
 }
+
+const catalogBatches=Math.max(chunks(envelope.leagues||[]).length,chunks(envelope.teams||[]).length,1)
+const leagueChunks=chunks(envelope.leagues||[])
+const teamChunks=chunks(envelope.teams||[])
+
+for(let i=0;i<catalogBatches;i++){
+  await invoke({
+    sports:i===0?(envelope.sports||[]):[],
+    leagues:leagueChunks[i]||[],
+    teams:teamChunks[i]||[],
+    fixtures:[],
+    events:[],
+    fullSync:false,
+    checkpoint:{phase:'catalog',batch:i+1,totalBatches:catalogBatches,...(envelope.checkpoint||{})},
+  })
+}
+
+const fixtureChunks=chunks(envelope.fixtures||[])
+for(let i=0;i<fixtureChunks.length;i++){
+  await invoke({
+    sports:[],leagues:[],teams:[],fixtures:fixtureChunks[i],events:[],
+    fullSync:false,
+    checkpoint:{phase:'fixtures',batch:i+1,totalBatches:fixtureChunks.length,...(envelope.checkpoint||{})},
+  })
+}
+
+const eventChunks=chunks(envelope.events||[])
+for(let i=0;i<eventChunks.length;i++){
+  await invoke({
+    sports:[],leagues:[],teams:[],fixtures:[],events:eventChunks[i],
+    fullSync:false,
+    checkpoint:{phase:'events',batch:i+1,totalBatches:eventChunks.length,...(envelope.checkpoint||{})},
+  })
+}
+
+await invoke({
+  sports:[],leagues:[],teams:[],fixtures:[],events:[],
+  fullSync:true,
+  checkpoint:{phase:'complete',...(envelope.checkpoint||{})},
+})
