@@ -18,6 +18,10 @@ import SettingsPage from './pages/SettingsPage'
 import SecurityCenterPage from './pages/SecurityCenterPage'
 import MultiAccountSandboxPage from './pages/MultiAccountSandboxPage'
 import AutomationCenterPage from './pages/AutomationCenterPage'
+import SportsDashboardPage from './pages/SportsDashboardPage'
+import SportsFixturesPage from './pages/SportsFixturesPage'
+import SportsProvidersPage from './pages/SportsProvidersPage'
+import SportsAdminPage from './pages/SportsAdminPage'
 
 export default function AppRouter(){return <Routes><Route element={<OperationsLayout/>}>
 <Route path="/" element={<DashboardPage/>}/><Route path="/bank-accounts" element={<BankAccountsPage/>}/>
@@ -29,5 +33,7 @@ export default function AppRouter(){return <Routes><Route element={<OperationsLa
 <Route path="/audit-log" element={<AuditLogPage/>}/><Route path="/callbacks" element={<CallbacksPage/>}/>
 <Route path="/settings" element={<SettingsPage/>}/><Route path="/security-sessions" element={<SecurityCenterPage/>}/>
 <Route path="/sandbox/multi-account" element={<MultiAccountSandboxPage/>}/><Route path="/automation-center" element={<AutomationCenterPage/>}/>
+<Route path="/sports" element={<SportsDashboardPage/>}/><Route path="/sports/fixtures" element={<SportsFixturesPage/>}/>
+<Route path="/sports/providers" element={<SportsProvidersPage/>}/><Route path="/sports/admin" element={<SportsAdminPage/>}/>
 <Route path="*" element={<Navigate to="/" replace/>}/>
 </Route></Routes>}
