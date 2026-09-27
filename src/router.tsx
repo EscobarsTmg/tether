@@ -22,6 +22,9 @@ import SportsDashboardPage from './pages/SportsDashboardPage'
 import SportsFixturesPage from './pages/SportsFixturesPage'
 import SportsProvidersPage from './pages/SportsProvidersPage'
 import SportsAdminPage from './pages/SportsAdminPage'
+import GameCatalogPage from './pages/GameCatalogPage'
+import GameProvidersPage from './pages/GameProvidersPage'
+import GameAdminPage from './pages/GameAdminPage'
 
 export default function AppRouter(){return <Routes><Route element={<OperationsLayout/>}>
 <Route path="/" element={<DashboardPage/>}/><Route path="/bank-accounts" element={<BankAccountsPage/>}/>
@@ -35,5 +38,6 @@ export default function AppRouter(){return <Routes><Route element={<OperationsLa
 <Route path="/sandbox/multi-account" element={<MultiAccountSandboxPage/>}/><Route path="/automation-center" element={<AutomationCenterPage/>}/>
 <Route path="/sports" element={<SportsDashboardPage/>}/><Route path="/sports/fixtures" element={<SportsFixturesPage/>}/>
 <Route path="/sports/providers" element={<SportsProvidersPage/>}/><Route path="/sports/admin" element={<SportsAdminPage/>}/>
+<Route path="/games" element={<GameCatalogPage/>}/><Route path="/games/providers" element={<GameProvidersPage/>}/><Route path="/games/admin" element={<GameAdminPage/>}/>
 <Route path="*" element={<Navigate to="/" replace/>}/>
 </Route></Routes>}
