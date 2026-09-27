@@ -10,7 +10,16 @@ export default function GameCatalogPage(){
     const hay=[g.name,g.external_id,g.category,providerById.get(g.provider_id||'')?.name].join(' ').toLowerCase()
     return(!q||hay.includes(q.toLowerCase()))&&(!type||g.game_type===type)&&(!provider||g.provider_id===provider)
   }),[games,providerById,q,type,provider])
-  const providers=[...new Map(games.map(g=>[g.provider_id,providerById.get(g.provider_id||'')]).filter(x=>x[0]&&x[1])).values()]
+  const providers=useMemo(()=>{
+    const seen=new Set<string>()
+    return games.flatMap(g=>{
+      const id=g.provider_id
+      if(!id||seen.has(id))return []
+      seen.add(id)
+      const provider=providerById.get(id)
+      return provider?[provider]:[]
+    })
+  },[games,providerById])
   return <div className="page"><div className="hero-strip"><div><span className="hero-kicker">GAME CATALOG</span><h2>Slot, live casino and table catalog</h2><p>Provider metadata is normalized into one internal catalog. RTP and multiplier fields are informational provider metadata.</p></div><Gamepad2 size={34}/></div>
     <section className="panel"><div className="panel-head"><div><h2>All games</h2><p>{loading?'Loading catalog...':rows.length+' records'}</p></div><div className="toolbar">
       <label className="search-box"><Search size={15}/><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search game, provider..."/></label>
