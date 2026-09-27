@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Activity, BarChart3, Bell, ChevronDown, CircleDollarSign, FileText, Gauge, History,
   LayoutDashboard, Link2, ListChecks, LogOut, Menu, Settings, ShieldCheck, Users,
-  WalletCards, Webhook, X, CheckCircle2, UserRoundCog, Bot, LockKeyhole, Trophy, Radio, Database, SlidersHorizontal, Gamepad2, Dices, PanelsTopLeft,
+  WalletCards, Webhook, X, CheckCircle2, UserRoundCog, Bot, LockKeyhole, Trophy, Radio, Database, SlidersHorizontal, Gamepad2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
